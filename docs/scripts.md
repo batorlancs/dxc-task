@@ -1,9 +1,17 @@
 # Scripts
 
-## Run redis locally
+## Run redis locally (docker)
+
+Compose docker
 
 ```sh
 docker-compose up -d
+```
+
+Shut down docker
+
+```sh
+docker-compose down
 ```
 
 ## Run the server
