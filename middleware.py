@@ -1,5 +1,5 @@
 from redis_database import RedisDatabase
-from socketify import App, MiddlewareRouter
+from socketify import App, MiddlewareRouter, Response, Request
 
 
 class AuthMiddlewareRouter(MiddlewareRouter):
@@ -9,8 +9,9 @@ class AuthMiddlewareRouter(MiddlewareRouter):
         self.db = db
         
 
-    def auth(self, res, req, data=None):
-        token = self.get_token(req.get_header("token"))
+    def auth(self, res: Response, req: Request, data=None):
+        token = self.db.use_token(req.get_header("token"), req.get_url())
+        req.get_header("token")
         if not token:
             res.write_status(403).end("token not valid")
             # stop the execution of the next middlewares
@@ -20,8 +21,9 @@ class AuthMiddlewareRouter(MiddlewareRouter):
         return token
     
     
-    def get_token(self, token: str):
+    def get_and_use_token(self, token: str):
         if token:
             api_token = self.db.use_token(token)
             return api_token
+        
         return None

@@ -1,5 +1,5 @@
 from redis_database import RedisDatabase
-from socketify import App, MiddlewareRouter
+from socketify import App
 from middleware import AuthMiddlewareRouter
 
 

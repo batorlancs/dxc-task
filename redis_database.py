@@ -1,10 +1,10 @@
 import redis
+import utils
 from redis.commands.json.path import Path
 from typing import Optional
 from api_token import ApiToken, ApiTokenData, TokenHandler
 
 
-# Constants
 DEFAULT_MAX_TIME_SECONDS = 15
 ROOT_PATH = Path.root_path()
 
@@ -15,21 +15,13 @@ class RedisDatabase:
         print("Connected to Redis!")
     
     
+    # Get the current timestamp in seconds
     def get_timestamp_seconds(self) -> int:
         return self.r.time()[0]
 
 
+    # Check if the operation has timed out
     def is_timeout(self, start_timestamp_seconds: int, max_time_seconds: int = DEFAULT_MAX_TIME_SECONDS) -> bool:
-        """
-        Check if the operation has timed out.
-        
-        Args:
-            start_timestamp_seconds (int): The start timestamp of the operation.
-            max_time_seconds (int): The maximum time allowed for the operation.
-            
-        Returns:
-            bool: True if the operation has timed out, False otherwise.
-        """
         return self.get_timestamp_seconds() - start_timestamp_seconds > max_time_seconds
 
 
@@ -48,7 +40,7 @@ class RedisDatabase:
         with self.r.pipeline() as pipe:
             while True:
                 if self.is_timeout(start_timestamp):
-                    raise ValueError('Operation timed out.')
+                    raise ValueError('Operation timed out. Please try again later.')
                 
                 try:
                     # Watch the token for changes
@@ -105,7 +97,7 @@ class RedisDatabase:
         return True
 
 
-    def use_token(self, token: str) -> ApiToken:
+    def use_token(self, token: str, url: str) -> ApiToken:
         """
         Use a token in Redis.
         
@@ -117,21 +109,24 @@ class RedisDatabase:
         
         with self.r.pipeline() as pipe:
             while True:
+                if self.is_timeout(start_timestamp):
+                    raise ValueError('Operation timed out. Please try again later.')
+                
                 try:
-                    if self.is_timeout(start_timestamp):
-                        raise ValueError('Operation timed out.')
-                    
                     # Watch the token for changes
                     pipe.watch(token_str)
                     
-                    if (int(pipe.exists(token_str)) == 0):
-                        raise ValueError('Token does not exist.')
+                    # if (int(pipe.exists(token_str)) == 0):
+                    #     raise ValueError('Token does not exist.')
 
                     # Fetch current values
                     token_data = pipe.json().get(token_str)
                     
                     if not token_data:
-                        raise ValueError('Token not found.')
+                        raise ValueError('Token does not exist.')
+                    
+                    if not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
+                        raise ValueError('Token is not authorized to access this endpoint.')
 
                     # Start the transaction
                     pipe.multi()
@@ -150,7 +145,7 @@ class RedisDatabase:
                     # Check if the transaction was successful
                     # !TODO: Implement better error handling
                     if not (len(res) == 1):
-                        raise ValueError('Transaction failed.')
+                        raise ValueError('Operation failed due to error.')
                     
                     return ApiToken(token, ApiTokenData(**token_data))
                     
