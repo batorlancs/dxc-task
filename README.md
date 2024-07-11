@@ -65,6 +65,7 @@ The following tests are implemented to ensure functionality:
 ### Running the Server
 
 Start the server using:
+
 ```sh
 python server.py
 ```
@@ -72,6 +73,7 @@ python server.py
 ### Running Tests
 
 Run the tests with:
+
 ```sh
 pytest
 ```
