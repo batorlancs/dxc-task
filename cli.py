@@ -23,7 +23,11 @@ elif args[0] == 'use':
     if len(args) < 2:
         print("Invalid argument. Did you mean: use <token>")
     elif args[1]:
-        db.use_token(args[1])
+        token = db.use_token(args[1])
+        print("----------------------------")
+        print(token.get_token_str())
+        print(token.get_mapping_dict())
+        print("----------------------------")
         
 else:
     print("Invalid argument. Try: create, delete, or use.")

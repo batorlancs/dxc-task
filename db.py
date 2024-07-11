@@ -1,6 +1,6 @@
 import redis
 from typing import Optional
-from api_token import ApiToken, TokenHandler
+from api_token import ApiToken, ApiTokenData, TokenHandler
 from redis import Redis
 
 
@@ -55,7 +55,7 @@ def token_exists(token: str) -> bool:
     return True
 
 
-def use_token(token: str):
+def use_token(token: str) -> ApiToken:
     """
     Use a token in Redis.
     
@@ -89,12 +89,23 @@ def use_token(token: str):
                 if access_count + 1 >= access_limit:
                     pipe.delete(token_str)
                 
+                pipe.hgetall(token_str)
+                
                 # Execute the transaction
                 res = pipe.execute()
                 print(res)
                 
                 # Check if the transaction was successful
-                break
+                # !TODO: Implement better error handling
+                if not (len(res) == 2 or len(res) == 3):
+                    raise ValueError('Transaction failed.')
+                
+                updated_token = res[-1]
+                if not updated_token:
+                    raise ValueError('Token not found.')
+                
+                return ApiToken(token, ApiTokenData(**updated_token))
+                
             except redis.WatchError:
                 # If a WatchError is raised, it means that the watched key was modified
                 # by another client before the transaction could be completed. In this
