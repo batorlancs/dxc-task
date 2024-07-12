@@ -17,10 +17,13 @@ class AuthMiddlewareRouter(MiddlewareRouter):
 
     def auth(self, res: Response, req: Request, data=None):
         headers = req.get_headers()
+        url = req.get_url()
+        print("------------------------")
+        print("url:", url)
            
         try:
             self.check_headers(headers)
-            return self.db.use_token(headers["token"], req.get_url())
+            return self.db.use_token(headers["token"], url)
         
         except ServerError as e:
             res.write_status(e.status_code).end(e.message_with_prefix)
