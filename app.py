@@ -1,5 +1,6 @@
-from socketify import App, MiddlewareRouter
-from auth import auth
+from redis_database import RedisDatabase
+from socketify import App
+from middleware import AuthMiddlewareRouter
 
 
 def api_1(res, req, data=None):
@@ -13,11 +14,28 @@ def api_3(res, req, data=None):
 
 
 app = App()
-auth_router = MiddlewareRouter(app, auth)
+db = RedisDatabase()
+
+# middleware
+auth_router = AuthMiddlewareRouter(app, db)
 auth_router.get("/api1", api_1)
 auth_router.get("/api2", api_2)
 auth_router.get("/api3", api_3)
+# auth_router.get("/", api_1)
 
+# handle endpoints not found
+app.any("/*", lambda res, req, data=None: res.write_status(404).end("Not found."))
 
-app.listen(3000, lambda config: print("Listening on port http://localhost:%d now\n" % config.port))
+# more error handling
+@app.on_error
+def on_error(error, res, req):
+    # here you can log properly the error and do a pretty response to your clients
+    print("Somethind goes %s" % str(error))
+    # response and request can be None if the error is in an async function
+    if res != None:
+        # if response exists try to send something
+        res.write_status(500).end("Internal server error")
+
+# start the server
+app.listen(3000, lambda config: print(f"Listening on port http://localhost:{config.port}"))
 app.run()

@@ -1,8 +1,9 @@
-import db
 import sys
+import redis_database
 from api_token import ApiToken
 
 args = sys.argv[1:]
+db = redis_database.RedisDatabase()
 
 if len(args) < 1:
     print("Invalid argument.")
