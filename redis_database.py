@@ -37,6 +37,13 @@ class RedisDatabase:
     def is_timeout(self, start_timestamp_seconds: int, max_time_seconds: int = DEFAULT_MAX_TIME_SECONDS) -> bool:
         return self.get_timestamp_seconds() - start_timestamp_seconds > max_time_seconds
 
+    async def clear_all_tokens(self):
+        """
+        Clear all tokens in Redis.
+        """
+        self.r.flushdb()
+        logger.debug("All tokens cleared. (flused db)")
+
     async def create_token(self, api_token: Optional[ApiToken] = ApiToken()):
         """
         Create a token in Redis with the given access count and limit.
@@ -61,6 +68,7 @@ class RedisDatabase:
                     raise ServerError('Token already exists.')
 
                 self.r.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
+                logger.debug(f"Token created: {token_str}")
                 break
 
             except redis.WatchError:
@@ -84,6 +92,7 @@ class RedisDatabase:
         result = self.r.delete(TokenHandler.format(token))
         if throw_error_on_not_found and result == 0:
             raise ServerError('Token does not exist.')
+        logger.debug(f"Token deleted: {token}")
 
     async def token_exists(self, token: str) -> bool:
         """
@@ -135,6 +144,7 @@ class RedisDatabase:
                 else:
                     self.r.json().numincrby(token_str, 'access_count', 1)
 
+                logger.debug(f"Token used: {token_str}, with current access_count: {token_data['access_count']}")
                 return ApiToken(token, ApiTokenData(**token_data))
 
             except redis.WatchError:
