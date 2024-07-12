@@ -1,6 +1,6 @@
 from redis_database import RedisDatabase
 from socketify import App, MiddlewareRouter, Response, Request
-from errors import DatabaseError, AuthError, NotFoundError
+from errors import ServerError, AuthenticationError, NotFoundError
 
 
 class AuthMiddlewareRouter(MiddlewareRouter):
@@ -9,16 +9,19 @@ class AuthMiddlewareRouter(MiddlewareRouter):
         self.app = app
         self.db = db
         
+    
+    def check_headers(self, headers: dict):
+        if not "token" in headers:
+            raise AuthenticationError("Please provide a token in the headers.")
+        
 
     def auth(self, res: Response, req: Request, data=None):
-        header_token = req.get_header("token")
-        if not header_token:
-            res.write_status(401).end("No token provided.")
-            return False
-            
+        headers = req.get_headers()
+           
         try:
-            return self.db.use_token(req.get_header("token"), req.get_url())
+            self.check_headers(headers)
+            return self.db.use_token(headers["token"], req.get_url())
         
-        except DatabaseError as e:
-            res.write_status(e.status_code).end(e.message)
+        except ServerError as e:
+            res.write_status(e.status_code).end(e.message_with_prefix)
             return False # stop the request from being processed further
