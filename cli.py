@@ -1,9 +1,10 @@
 import sys
 import redis_database
-from api_token import ApiToken
+import asyncio
+from api_token import ApiToken, ApiTokenData
 
 
-def run_command(arg1: str = None, arg2: str = None):
+async def run_command(arg1: str = None, arg2: str = None):
     # connect to the Redis database
     db = redis_database.RedisDatabase()
 
@@ -20,22 +21,29 @@ def run_command(arg1: str = None, arg2: str = None):
         if len(args) < 2:
             print("Invalid argument. Did you mean: create <token>")
         elif args[1]:
-            db.create_token(ApiToken(args[1]))
+            await db.create_token(
+                ApiToken(args[1], ApiTokenData(
+                    access_limit=5,
+                    access_count=2,
+                    scopes=["*"]
+                ))
+            )
+            print("Token created successfully.")
 
     elif args[0] == 'delete':
         if len(args) < 2:
             print("Invalid argument. Did you mean: delete <token>")
         elif args[1]:
-            db.delete_token(args[1])
+            await db.delete_token(args[1])
 
     elif args[0] == 'use':
         if len(args) < 2:
             print("Invalid argument. Did you mean: use <token>")
         elif args[1]:
-            token = db.use_token(args[1], "")
+            token = await db.get_and_use_token(args[1], "/api1")
             print("----------------------------")
             print(token.get_token_str())
-            print(token.get_mapping_dict())
+            print(token.data.__dict__)
             print("----------------------------")
 
     else:
@@ -43,4 +51,4 @@ def run_command(arg1: str = None, arg2: str = None):
 
 
 args = sys.argv[1:]
-run_command(*args)
+asyncio.run(run_command(*args))

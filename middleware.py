@@ -13,7 +13,7 @@ class AuthMiddlewareRouter(MiddlewareRouter):
         if "token" not in headers:
             raise AuthenticationError("Please provide a token in the headers.")
 
-    def auth(self, res: Response, req: Request, data=None):
+    async def auth(self, res: Response, req: Request, data=None):
         headers = req.get_headers()
         url = req.get_url()
         print("------------------------")
@@ -21,7 +21,8 @@ class AuthMiddlewareRouter(MiddlewareRouter):
 
         try:
             self.check_headers(headers)
-            return self.db.use_token(headers["token"], url)
+            response = await self.db.get_and_use_token(headers["token"], url)
+            return response
 
         except ServerError as e:
             res.write_status(e.status_code).end(e.message_with_prefix)

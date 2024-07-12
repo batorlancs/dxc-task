@@ -16,25 +16,22 @@ def api_3(res, req, data=None):
 
 
 app = App()
-db = RedisDatabase()
+db = RedisDatabase(check_connection=True) # connect to the redis database
 
 # middleware
 auth_router = AuthMiddlewareRouter(app, db)
 auth_router.get("/api1", api_1)
 auth_router.get("/api2", api_2)
 auth_router.get("/api3", api_3)
-# auth_router.get("/", api_1)
 
 # handle endpoints not found
 app.any("/*", lambda res, req, data=None: res.write_status(404).end("Not found."))
-
-# more error handling
 
 
 @app.on_error
 def on_error(error, res, req):
     # here you can log properly the error and do a pretty response to your clients
-    print("Somethind goes %s" % str(error))
+    print(f"Some internal error occurred: {error}")
     # response and request can be None if the error is in an async function
     if res is not None:
         # if response exists try to send something

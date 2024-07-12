@@ -11,21 +11,32 @@ ROOT_PATH = Path.root_path()
 
 
 class RedisDatabase:
-    def __init__(self):
+    def __init__(self, check_connection: bool = False):
         self.r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
-        print("Connected to Redis!")
+        if check_connection:
+            print("Checking connection to Redis...")
+            if not self.check_connection():
+                print("Failed.")
+                raise ServerError('Could not connect to Redis.')
+            else:
+                print("Successful.")
+        
+    def check_connection(self) -> bool:
+        try:
+            self.r.ping()
+            return True
+        except redis.ConnectionError:
+            return False
 
     # Get the current timestamp in seconds
-
     def get_timestamp_seconds(self) -> int:
         return self.r.time()[0]
 
     # Check if the operation has timed out
-
     def is_timeout(self, start_timestamp_seconds: int, max_time_seconds: int = DEFAULT_MAX_TIME_SECONDS) -> bool:
         return self.get_timestamp_seconds() - start_timestamp_seconds > max_time_seconds
 
-    def create_token(self, api_token: Optional[ApiToken] = ApiToken()):
+    async def create_token(self, api_token: Optional[ApiToken] = ApiToken()):
         """
         Create a token in Redis with the given access count and limit.
 
@@ -37,34 +48,31 @@ class RedisDatabase:
         start_timestamp = self.get_timestamp_seconds()
         token_str = api_token.get_token_str()
 
-        with self.r.pipeline() as pipe:
-            while True:
-                if self.is_timeout(start_timestamp):
-                    raise ServerError('Operation timed out. Please try again later.')
+        while True:
+            if self.is_timeout(start_timestamp):
+                raise ServerError('Operation timed out. Please try again later.')
 
-                try:
-                    # Watch the token for changes
-                    pipe.watch(token_str)
+            try:
+                # Watch the token for changes
+                self.r.watch(token_str)
 
-                    if (int(pipe.exists(token_str)) == 1):
-                        raise ServerError('Token already exists.')
+                if (int(self.r.exists(token_str)) == 1):
+                    raise ServerError('Token already exists.')
 
-                    # Start the transaction
-                    pipe.multi()
-                    pipe.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
+                self.r.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
+                break
 
-                    # Execute the transaction
-                    res = pipe.execute()
-                    print("Token created:", res)
-                    break
+            except redis.WatchError:
+                # If a WatchError is raised, it means that the watched key was modified
+                # by another client before the transaction could be completed. In this
+                # case, retry the operation.
+                self.r.unwatch()
+                continue
+            
+            finally:
+                self.r.unwatch()
 
-                except redis.WatchError:
-                    # If a WatchError is raised, it means that the watched key was modified
-                    # by another client before the transaction could be completed. In this
-                    # case, retry the operation.
-                    continue
-
-    def delete_token(self, token: str):
+    async def delete_token(self, token: str, throw_error_on_not_found: bool = True):
         """
         Delete a token from Redis.
 
@@ -73,12 +81,10 @@ class RedisDatabase:
         """
         # 1: deleted existing, 0: does not exist
         result = self.r.delete(TokenHandler.format(token))
-        if result == 0:
+        if throw_error_on_not_found and result == 0:
             raise ServerError('Token does not exist.')
 
-        print("Token deleted, status:", result)
-
-    def token_exists(self, token: str) -> bool:
+    async def token_exists(self, token: str) -> bool:
         """
         Check if a token exists in Redis.
 
@@ -94,7 +100,7 @@ class RedisDatabase:
 
         return True
 
-    def use_token(self, token: str, url: str) -> ApiToken:
+    async def get_and_use_token(self, token: str, url: str) -> ApiToken:
         """
         Use a token in Redis.
 
@@ -104,49 +110,38 @@ class RedisDatabase:
         token_str = TokenHandler.format(token)
         start_timestamp = self.get_timestamp_seconds()
 
-        with self.r.pipeline() as pipe:
-            while True:
-                if self.is_timeout(start_timestamp):
-                    raise ServerError('Operation timed out. Please try again later.')
+        
+        while True:
+            if self.is_timeout(start_timestamp):
+                raise ServerError('Operation timed out. Please try again later.')
 
-                try:
-                    # Watch the token for changes
-                    pipe.watch(token_str)
+            try:
+                # Watch the token for changes
+                self.r.watch(token_str)
 
-                    # if (int(pipe.exists(token_str)) == 0):
-                    #     raise ValueError('Token does not exist.')
+                # Fetch current values
+                token_data = self.r.json().get(token_str)
 
-                    # Fetch current values
-                    token_data = pipe.json().get(token_str)
+                if not token_data:
+                    raise AuthenticationError('Token does not exist.')
 
-                    if not token_data:
-                        raise AuthenticationError('Token does not exist.')
+                if not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
+                    raise ForbiddenError('Token is not authorized to access this endpoint.')
 
-                    if not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
-                        raise ForbiddenError('Token is not authorized to access this endpoint.')
+                if token_data['access_count'] + 1 >= token_data['access_limit']:
+                    self.r.delete(token_str)
+                else:
+                    # increment access count
+                    self.r.json().numincrby(token_str, 'access_count', 1)
 
-                    # Start the transaction
-                    pipe.multi()
+                return ApiToken(token, ApiTokenData(**token_data))
 
-                    if token_data['access_count'] + 1 >= token_data['access_limit']:
-                        pipe.delete(token_str)
-                    else:
-                        # increment access count
-                        pipe.json().numincrby(token_str, 'access_count', 1)
-
-                    # Execute the transaction
-                    res = pipe.execute()
-                    print(res)
-
-                    # Check if the transaction was successful
-                    # !TODO: Implement better error handling
-                    if not len(res) == 1:
-                        raise ServerError('Operation failed due to error.')
-
-                    return ApiToken(token, ApiTokenData(**token_data))
-
-                except redis.WatchError:
-                    # If a WatchError is raised, it means that the watched key was modified
-                    # by another client before the transaction could be completed. In this
-                    # case, retry the operation.
-                    continue
+            except redis.WatchError:
+                # If a WatchError is raised, it means that the watched key was modified
+                # by another client before the transaction could be completed. In this
+                # case, retry the operation.
+                self.r.unwatch()
+                continue
+            
+            finally:
+                self.r.unwatch()
