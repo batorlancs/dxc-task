@@ -3,6 +3,7 @@ import utils
 from redis.commands.json.path import Path
 from typing import Optional
 from api_token import ApiToken, ApiTokenData, TokenHandler
+from errors import DatabaseError, AuthError, NotFoundError
 
 
 DEFAULT_MAX_TIME_SECONDS = 15
@@ -40,14 +41,14 @@ class RedisDatabase:
         with self.r.pipeline() as pipe:
             while True:
                 if self.is_timeout(start_timestamp):
-                    raise ValueError('Operation timed out. Please try again later.')
+                    raise DatabaseError('Operation timed out. Please try again later.')
                 
                 try:
                     # Watch the token for changes
                     pipe.watch(token_str)
                     
                     if (int(pipe.exists(token_str)) == 1):
-                        raise ValueError('Token already exists.')
+                        raise DatabaseError('Token already exists.')
                     
                     # Start the transaction
                     pipe.multi()
@@ -75,7 +76,7 @@ class RedisDatabase:
         # 1: deleted existing, 0: does not exist
         result = self.r.delete(TokenHandler.format(token))
         if result == 0:
-            raise ValueError('Token does not exist.')
+            raise DatabaseError('Token does not exist.')
         
         print("Token deleted, status:", result)
         
@@ -110,7 +111,7 @@ class RedisDatabase:
         with self.r.pipeline() as pipe:
             while True:
                 if self.is_timeout(start_timestamp):
-                    raise ValueError('Operation timed out. Please try again later.')
+                    raise DatabaseError('Operation timed out. Please try again later.')
                 
                 try:
                     # Watch the token for changes
@@ -123,10 +124,10 @@ class RedisDatabase:
                     token_data = pipe.json().get(token_str)
                     
                     if not token_data:
-                        raise ValueError('Token does not exist.')
+                        raise NotFoundError('Token does not exist.')
                     
                     if not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
-                        raise ValueError('Token is not authorized to access this endpoint.')
+                        raise AuthError('Token is not authorized to access this endpoint.')
 
                     # Start the transaction
                     pipe.multi()
@@ -145,7 +146,7 @@ class RedisDatabase:
                     # Check if the transaction was successful
                     # !TODO: Implement better error handling
                     if not (len(res) == 1):
-                        raise ValueError('Operation failed due to error.')
+                        raise DatabaseError('Operation failed due to error.')
                     
                     return ApiToken(token, ApiTokenData(**token_data))
                     
