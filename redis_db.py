@@ -8,6 +8,7 @@ from errors import ServerError, AuthenticationError, ForbiddenError
 
 
 DEFAULT_MAX_TIME_SECONDS = 5
+DEFAULT_MAX_RETRIES = 10
 ROOT_PATH = Path.root_path()
 
 
@@ -15,7 +16,6 @@ class RedisDatabaseManager:
     def __init__(self, check_connection: bool = False):
         self.r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
         if check_connection:
-            logger.info("Checking connection to Redis...")
             if not self.check_connection():
                 raise ServerError('Could not connect to Redis.')
         
@@ -53,7 +53,8 @@ class RedisDatabaseManager:
         """
         start_timestamp = self.get_timestamp_seconds()
         token_str = api_token.get_token_str()
-
+        max_retries = DEFAULT_MAX_RETRIES
+        curr_retries = 0
        
         while True:
             pipe = self.r.pipeline()
@@ -72,12 +73,21 @@ class RedisDatabaseManager:
                 pipe.json().get(token_str)
                 pipe.unwatch()
                 res = pipe.execute()
-                print(res)
+                logger.debug(res)
                 
-                # !TODO: check if pipelineing was successful
+                pipe_success = res[0] == True and res[1] is not None and res[2] == True
+                
+                # This is in case the same client is trying to use the token multiple times asynchronously
+                if not pipe_success:
+                    if curr_retries < max_retries:
+                        curr_retries += 1
+                        logger.debug(f"...Retrying to use token: {token_str}")
+                        continue
+                    else:
+                        raise ServerError('Token creation failed.')
                 
                 logger.debug(f"Token created: {token_str}")
-                return ApiToken(token_str, ApiTokenData(**res[1]))
+                return ApiToken(TokenHandler.parse(token_str), ApiTokenData(**res[1]))
 
             except redis.WatchError:
                 # If a WatchError is raised, it means that the watched key was modified
@@ -116,7 +126,7 @@ class RedisDatabaseManager:
 
         return True
 
-    async def get_and_use_token(self, token: str, url: str) -> ApiToken:
+    async def get_and_use_token(self, token: str, url: str = None) -> ApiToken:
         """
         Use a token in Redis.
 
@@ -125,7 +135,8 @@ class RedisDatabaseManager:
         """
         token_str = TokenHandler.format(token)
         start_timestamp = self.get_timestamp_seconds()
-
+        max_retries = DEFAULT_MAX_RETRIES
+        curr_retries = 0
         
         while True:
             pipe = self.r.pipeline()
@@ -142,25 +153,39 @@ class RedisDatabaseManager:
                 if not token_data:
                     raise AuthenticationError('Token is not valid.')
 
-                if not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
+                if url and not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
                     raise ForbiddenError('Token is not authorized to access this endpoint.')
-
-                pipe.multi()
                 
-                if token_data['access_count'] + 1 >= token_data['access_limit']:
+                reached_access_limit = token_data['access_count'] + 1 >= token_data['access_limit']
+                pipe.multi() # Start multi transaction
+                pipe.json().numincrby(token_str, 'access_count', 1) # Increment access count
+                pipe.json().get(token_str) # Get updated token data
+
+                # Delete token if access limit is reached
+                if reached_access_limit:
                     pipe.delete(token_str)
-                else:
-                    pipe.json().numincrby(token_str, 'access_count', 1)
 
-                pipe.json().get(token_str)
                 pipe.unwatch()
-                res = pipe.execute()
-                print(res)
+                res = pipe.execute() # Execute multi transaction
+                
+                logger.debug(res)
 
-                # !TODO: check if pipelineing was successful
+                # Check if the transaction was successful
+                pipe_success_when_inc = len(res) == 3 and res[0] >= 1 and res[1] is not None and res[2] == True
+                pipe_success_when_del = len(res) == 4 and res[0] >= 1 and res[1] is not None and res[2] == 1 and res[3] == True
+                pipe_success = pipe_success_when_del if reached_access_limit else pipe_success_when_inc
 
-                logger.debug(f"Token used: {token_str}, with current access_count: {res[0]}")
-                return ApiToken(token_str, ApiTokenData(**res[1]))
+                # This is in case the same client is trying to use the token multiple times asynchronously
+                if not pipe_success:
+                    if curr_retries < max_retries:
+                        curr_retries += 1
+                        logger.debug(f"Pipeline error, retrying to use token: {token_str}")
+                        continue
+                    else:
+                        raise ServerError('Token usage failed.')
+
+                logger.debug(f"Token used: {token_str}, with current access_count: {res[1]['access_count']}")
+                return ApiToken(TokenHandler.parse(token_str), ApiTokenData(**res[1]))
 
             except redis.WatchError:
                 # If a WatchError is raised, it means that the watched key was modified
