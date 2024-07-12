@@ -10,6 +10,7 @@ redis = "*"
 pytest = "*"
 asyncio = "*"
 loguru = "*"
+pytest-asyncio = "*"
 
 [dev-packages]
 autopep8 = "*"

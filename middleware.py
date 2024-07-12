@@ -17,12 +17,11 @@ class AuthMiddlewareRouter(MiddlewareRouter):
     async def auth(self, res: Response, req: Request, data=None):
         headers = req.get_headers()
         url = req.get_url()
-        logger.debug(f"Authenticating incoming request for url: {url}")
+        logger.info(f"---> url: {url}, token: {headers['token'] or 'None'}")
 
         try:
             self.check_headers(headers)
             response = await self.db.get_and_use_token(headers["token"], url)
-            logger.debug(f"Got response {response.get_token_str()}, with current access_count: {response.data.access_count}")
             return response
 
         except ServerError as e:

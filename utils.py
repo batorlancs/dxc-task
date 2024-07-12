@@ -3,8 +3,8 @@ def is_endpoint_in_scope(endpoint: str, scope: str) -> bool:
     Check if an endpoint is in the scope of a token.
     - "*" access to all endpoints and home
     - "" access to just home (or "/")
-    - "api/" access to all endpoints in the api
-    - "api*" access to all endpoints starting with api
+    - "api/" access to all endpoints in the api but not api itself
+    - "api*" access to all endpoints in the api including api itself
     - "api" access to the specific endpoint
 
     Args:

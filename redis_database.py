@@ -7,7 +7,7 @@ from api_token import ApiToken, ApiTokenData, TokenHandler
 from errors import ServerError, AuthenticationError, ForbiddenError
 
 
-DEFAULT_MAX_TIME_SECONDS = 15
+DEFAULT_MAX_TIME_SECONDS = 5
 ROOT_PATH = Path.root_path()
 
 
@@ -42,7 +42,8 @@ class RedisDatabase:
         Clear all tokens in Redis.
         """
         self.r.flushdb()
-        logger.debug("All tokens cleared. (flused db)")
+        logger.debug("All tokens cleared (database flushed).")
+
 
     async def create_token(self, api_token: Optional[ApiToken] = ApiToken()):
         """
@@ -56,18 +57,24 @@ class RedisDatabase:
         start_timestamp = self.get_timestamp_seconds()
         token_str = api_token.get_token_str()
 
+       
         while True:
+            pipe = self.r.pipeline()
             if self.is_timeout(start_timestamp):
                 raise ServerError('Operation timed out. Please try again later.')
 
             try:
                 # Watch the token for changes
-                self.r.watch(token_str)
+                pipe.watch(token_str)
 
-                if (int(self.r.exists(token_str)) == 1):
+                if (int(pipe.exists(token_str)) == 1):
                     raise ServerError('Token already exists.')
 
-                self.r.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
+                pipe.multi()
+                pipe.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
+                pipe.json().get(token_str)
+                res = pipe.execute()
+                print(res)
                 logger.debug(f"Token created: {token_str}")
                 break
 
@@ -75,11 +82,49 @@ class RedisDatabase:
                 # If a WatchError is raised, it means that the watched key was modified
                 # by another client before the transaction could be completed. In this
                 # case, retry the operation.
-                self.r.unwatch()
+                pipe.unwatch()
                 continue
             
             finally:
-                self.r.unwatch()
+                pipe.unwatch()
+
+
+    # async def create_token(self, api_token: Optional[ApiToken] = ApiToken()):
+    #     """
+    #     Create a token in Redis with the given access count and limit.
+
+    #     Args:
+    #         token (str): The token to create.
+    #         access_count (int): The number of times the token has been accessed.
+    #         access_limit (int): The maximum number of times the token can be accessed.
+    #     """
+    #     start_timestamp = self.get_timestamp_seconds()
+    #     token_str = api_token.get_token_str()
+
+    #     while True:
+    #         if self.is_timeout(start_timestamp):
+    #             raise ServerError('Operation timed out. Please try again later.')
+
+    #         try:
+    #             # Watch the token for changes
+    #             self.r.watch(token_str)
+
+    #             if (int(self.r.exists(token_str)) == 1):
+    #                 raise ServerError('Token already exists.')
+
+    #             self.r.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
+    #             logger.debug(f"Token created: {token_str}")
+    #             break
+
+    #         except redis.WatchError:
+    #             # If a WatchError is raised, it means that the watched key was modified
+    #             # by another client before the transaction could be completed. In this
+    #             # case, retry the operation.
+    #             self.r.unwatch()
+    #             continue
+            
+    #         finally:
+    #             self.r.unwatch()
 
     async def delete_token(self, token: str, throw_error_on_not_found: bool = True):
         """
@@ -133,7 +178,7 @@ class RedisDatabase:
                 token_data = self.r.json().get(token_str)
 
                 if not token_data:
-                    raise AuthenticationError('Token does not exist.')
+                    raise AuthenticationError('Token is not valid.')
 
                 if not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
                     raise ForbiddenError('Token is not authorized to access this endpoint.')

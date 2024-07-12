@@ -1,12 +1,12 @@
 import sys
 import asyncio
-import threading
+import config
 from loguru import logger
 from redis_database import RedisDatabase
 from socketify import App, Response, Request, AppListenOptions
 from middleware import AuthMiddlewareRouter
 from endpoints import setup_auth_endpoints
-from environments import setup_test_environment, setup_empty_db_environment
+from environments import setup_environment_with_args, InvalidArgumentError, EnvironmentSetupError
 
 
 async def init() -> App:
@@ -32,18 +32,17 @@ async def init() -> App:
     auth_router = AuthMiddlewareRouter(app, db)
     setup_auth_endpoints(auth_router) # create the endpoints
 
-    # setup environment
-    if len(sys.argv) == 2:
-        if sys.argv[1] == "--test":
-            await setup_test_environment(app, db)
-        elif sys.argv[1] == "--empty":
-            await setup_empty_db_environment(app, db)
-        else:
-            logger.error("Invalid argument. Try using --test or --empty.")
-            logger.warning("Continuing with the default environment...")
-    elif len(sys.argv) > 2:
-        logger.error("Invalid number of arguments. Try using --test or --empty.")
+    # setup the environment
+    try:
+        await setup_environment_with_args(sys.argv, db)
+    except InvalidArgumentError as e:
+        logger.error(e)
         logger.warning("Continuing with the default environment...")
+    except EnvironmentSetupError as e:
+        logger.error(e)
+        logger.info("Exiting the server...")
+        sys.exit(1)
+    
 
     # handle 404 errors
     app.any("/*", lambda res, req: res.write_status(404).end("Not Found"))
@@ -58,6 +57,6 @@ async def init() -> App:
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     app = loop.run_until_complete(init())
     app.run()
