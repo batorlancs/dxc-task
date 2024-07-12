@@ -1,3 +1,4 @@
+from loguru import logger
 from redis_database import RedisDatabase
 from socketify import App
 from middleware import AuthMiddlewareRouter
@@ -15,8 +16,10 @@ def api_3(res, req, data=None):
     res.write_status(200).end("API3")
 
 
-app = App()
 db = RedisDatabase(check_connection=True) # connect to the redis database
+
+app = App()
+logger.info("Initiating the server...")
 
 # middleware
 auth_router = AuthMiddlewareRouter(app, db)
@@ -31,7 +34,7 @@ app.any("/*", lambda res, req, data=None: res.write_status(404).end("Not found."
 @app.on_error
 def on_error(error, res, req):
     # here you can log properly the error and do a pretty response to your clients
-    print(f"Some internal error occurred: {error}")
+    logger.error(f"Some internal error occurred: {error}")
     # response and request can be None if the error is in an async function
     if res is not None:
         # if response exists try to send something
@@ -39,5 +42,5 @@ def on_error(error, res, req):
 
 
 # start the server
-app.listen(3000, lambda config: print(f"Listening on port http://localhost:{config.port}"))
+app.listen(3000, lambda config: logger.success(f"Listening on port http://localhost:{config.port}"))
 app.run()

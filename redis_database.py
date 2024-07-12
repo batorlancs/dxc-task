@@ -1,5 +1,6 @@
 import redis
 import utils
+from loguru import logger
 from redis.commands.json.path import Path
 from typing import Optional
 from api_token import ApiToken, ApiTokenData, TokenHandler
@@ -14,12 +15,12 @@ class RedisDatabase:
     def __init__(self, check_connection: bool = False):
         self.r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
         if check_connection:
-            print("Checking connection to Redis...")
+            logger.info("Checking connection to Redis...")
             if not self.check_connection():
-                print("Failed.")
+                logger.error("Redis Connection Failed.")
                 raise ServerError('Could not connect to Redis.')
             else:
-                print("Successful.")
+                logger.success("Redis Connection Successful.")
         
     def check_connection(self) -> bool:
         try:

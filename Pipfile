@@ -9,6 +9,7 @@ socketify = "*"
 redis = "*"
 pytest = "*"
 asyncio = "*"
+loguru = "*"
 
 [dev-packages]
 autopep8 = "*"
