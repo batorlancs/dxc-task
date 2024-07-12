@@ -15,9 +15,12 @@ autopep8 = "*"
 [scripts]
 redis-up = "docker compose up -d"
 redis-down = "docker compose down"
+redis-info = "docker compose ps"
+redis-logs = "docker compose logs"
 app = "python app.py"
 test = "pytest"
-format = "autopep8 -riv --max-line-length 150"
+format = "autopep8 --in-place --aggressive --aggressive --recursive ."
+format-diff = "autopep8 --diff --aggressive --aggressive --recursive ."
 cli = "python cli.py"
 
 [requires]
