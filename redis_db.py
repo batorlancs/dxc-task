@@ -87,7 +87,7 @@ class RedisDatabaseManager:
                         raise ServerError('Token creation failed.')
                 
                 logger.debug(f"Token created: {token_str}")
-                return ApiToken(TokenHandler.parse(token_str), ApiTokenData(**res[1]))
+                return ApiToken.from_dict({'token': token_str, 'data': res[1]})
 
             except redis.WatchError:
                 # If a WatchError is raised, it means that the watched key was modified
@@ -97,7 +97,7 @@ class RedisDatabaseManager:
                 continue
 
 
-    async def delete_token(self, token: str, throw_error_on_not_found: bool = True):
+    async def delete_token(self, token: str, throw_error_on_not_found: bool = False):
         """
         Delete a token from Redis.
 
@@ -185,7 +185,7 @@ class RedisDatabaseManager:
                         raise ServerError('Token usage failed.')
 
                 logger.debug(f"Token used: {token_str}, with current access_count: {res[1]['access_count']}")
-                return ApiToken(TokenHandler.parse(token_str), ApiTokenData(**res[1]))
+                return ApiToken.from_dict({'token': token_str, 'data': res[1]})
 
             except redis.WatchError:
                 # If a WatchError is raised, it means that the watched key was modified
