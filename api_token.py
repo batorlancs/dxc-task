@@ -1,15 +1,16 @@
 import uuid
 from typing import Optional
 
+
 class TokenHandler:
     @staticmethod
     def format(token: str):
         return f"token:{token}"
-    
+
     @staticmethod
     def parse(token: str):
         return token.split(":")[1]
-    
+
 
 class ApiTokenData:
     def __init__(
@@ -31,7 +32,7 @@ class ApiToken:
     ):
         self.token = token
         self.data = data
-    
+
     def get_token_str(self):
         return TokenHandler.format(self.token)
 

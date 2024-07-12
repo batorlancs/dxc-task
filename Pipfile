@@ -19,8 +19,8 @@ redis-info = "docker compose ps"
 redis-logs = "docker compose logs"
 app = "python app.py"
 test = "pytest"
-format = "autopep8 --in-place --aggressive --aggressive --recursive ."
-format-diff = "autopep8 --diff --aggressive --aggressive --recursive ."
+format = "autopep8 --in-place --aggressive --aggressive --recursive . --max-line-length 120"
+format-diff = "autopep8 --diff --aggressive --aggressive --recursive . --max-line-length 120"
 cli = "python cli.py"
 
 [requires]
