@@ -128,10 +128,10 @@ class RedisDatabase:
                 if not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
                     raise ForbiddenError('Token is not authorized to access this endpoint.')
 
-                if token_data['access_count'] + 1 >= token_data['access_limit']:
+                token_data['access_count'] += 1
+                if token_data['access_count'] >= token_data['access_limit']:
                     self.r.delete(token_str)
                 else:
-                    # increment access count
                     self.r.json().numincrby(token_str, 'access_count', 1)
 
                 return ApiToken(token, ApiTokenData(**token_data))
