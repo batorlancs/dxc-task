@@ -1,46 +1,63 @@
+import sys
+import asyncio
+import threading
+from loguru import logger
 from redis_database import RedisDatabase
-from socketify import App
+from socketify import App, Response, Request, AppListenOptions
 from middleware import AuthMiddlewareRouter
+from endpoints import setup_auth_endpoints
+from environments import setup_test_environment, setup_empty_db_environment
 
 
-def api_1(res, req, data=None):
-    res.write_status(200).end("API1")
+async def init() -> App:
+    # Connect to the redis database
+    db = RedisDatabase(check_connection=True)
+
+    logger.info("Initiating the server...")
+    app = App()
 
 
-def api_2(res, req, data=None):
-    res.write_status(200).end("API2")
+    @app.on_error
+    def on_error(error, res: Response, req: Request):
+        """
+        Handle all unexpected errors that occur in the server.
+        """
+        logger.error(f"An unexpected error occurred: {error}")
+        # response and request can be None if the error is in an async function
+        if res is not None:
+            res.write_status(500).end("Internal Server Error")
 
 
-def api_3(res, req, data=None):
-    res.write_status(200).end("API3")
+    # setup the middleware auth and endpoints
+    auth_router = AuthMiddlewareRouter(app, db)
+    setup_auth_endpoints(auth_router) # create the endpoints
+
+    # setup environment
+    if len(sys.argv) == 2:
+        if sys.argv[1] == "--test":
+            await setup_test_environment(app, db)
+        elif sys.argv[1] == "--empty":
+            await setup_empty_db_environment(app, db)
+        else:
+            logger.error("Invalid argument. Try using --test or --empty.")
+            logger.warning("Continuing with the default environment...")
+    elif len(sys.argv) > 2:
+        logger.error("Invalid number of arguments. Try using --test or --empty.")
+        logger.warning("Continuing with the default environment...")
+
+    # handle 404 errors
+    app.any("/*", lambda res, req: res.write_status(404).end("Not Found"))
+
+    # start the server
+    app.listen(
+        AppListenOptions(port=3000, host="localhost"),
+        lambda config: logger.success(f"Listening on port http://{config.host}:{config.port}")
+    )
+    
+    return app
 
 
-app = App()
-db = RedisDatabase()
-
-# middleware
-auth_router = AuthMiddlewareRouter(app, db)
-auth_router.get("/api1", api_1)
-auth_router.get("/api2", api_2)
-auth_router.get("/api3", api_3)
-# auth_router.get("/", api_1)
-
-# handle endpoints not found
-app.any("/*", lambda res, req, data=None: res.write_status(404).end("Not found."))
-
-# more error handling
-
-
-@app.on_error
-def on_error(error, res, req):
-    # here you can log properly the error and do a pretty response to your clients
-    print("Somethind goes %s" % str(error))
-    # response and request can be None if the error is in an async function
-    if res is not None:
-        # if response exists try to send something
-        res.write_status(500).end("Internal server error")
-
-
-# start the server
-app.listen(3000, lambda config: print(f"Listening on port http://localhost:{config.port}"))
-app.run()
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    app = loop.run_until_complete(init())
+    app.run()

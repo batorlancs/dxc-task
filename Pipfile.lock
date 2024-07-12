@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "2bf4e8190fefe17ebb7dbc3faee440545ca04e1a2e4912470dc265640711fdbe"
+            "sha256": "ecd61a9fbb61ccfb58ee43facbd95ebf92203d4790b00330915eaae65f9f70f7"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -23,6 +23,16 @@
             ],
             "markers": "python_full_version < '3.11.3'",
             "version": "==4.0.3"
+        },
+        "asyncio": {
+            "hashes": [
+                "sha256:83360ff8bc97980e4ff25c964c7bd3923d333d177aa4f7fb736b019f26c7cb41",
+                "sha256:b62c9157d36187eca799c378e572c969f0da87cd5fc42ca372d92cdb06e7e1de",
+                "sha256:c46a87b48213d7464f22d9a497b9eef8c1928b68320a2fa94240f969f6fec08c",
+                "sha256:c4d18b22701821de07bd6aea8b53d21449ec0ec5680645e5317062ea21817d2d"
+            ],
+            "index": "pypi",
+            "version": "==3.4.3"
         },
         "certifi": {
             "hashes": [
@@ -210,6 +220,15 @@
             "markers": "python_version >= '3.7'",
             "version": "==2.0.0"
         },
+        "loguru": {
+            "hashes": [
+                "sha256:003d71e3d3ed35f0f8984898359d65b79e5b21943f78af86aa5491210429b8eb",
+                "sha256:e671a53522515f34fd406340ee968cb9ecafbc4b36c679da03c18fd8d0bd51ac"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.5'",
+            "version": "==0.7.2"
+        },
         "packaging": {
             "hashes": [
                 "sha256:026ed72c8ed3fcce5bf8950572258698927fd1dbda10a5e981cdf0ac37f4f002",
@@ -286,6 +305,14 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==2.2.2"
+        },
+        "win32-setctime": {
+            "hashes": [
+                "sha256:15cf5750465118d6929ae4de4eb46e8edae9a5634350c01ba582df868e932cb2",
+                "sha256:231db239e959c2fe7eb1d7dc129f11172354f98361c4fa2d6d2d7e278baa8aad"
+            ],
+            "markers": "sys_platform == 'win32'",
+            "version": "==1.1.0"
         }
     },
     "develop": {
