@@ -1,46 +1,40 @@
+import sys
 from loguru import logger
 from redis_database import RedisDatabase
-from socketify import App
+from socketify import App, Response, Request, AppListenOptions
 from middleware import AuthMiddlewareRouter
+from endpoints import setup_auth_endpoints
 
 
-def api_1(res, req, data=None):
-    res.write_status(200).end("API1")
+# Connect to the redis database
+db = RedisDatabase(check_connection=True)
 
-
-def api_2(res, req, data=None):
-    res.write_status(200).end("API2")
-
-
-def api_3(res, req, data=None):
-    res.write_status(200).end("API3")
-
-
-db = RedisDatabase(check_connection=True) # connect to the redis database
-
-app = App()
 logger.info("Initiating the server...")
-
-# middleware
-auth_router = AuthMiddlewareRouter(app, db)
-auth_router.get("/api1", api_1)
-auth_router.get("/api2", api_2)
-auth_router.get("/api3", api_3)
-
-# handle endpoints not found
-app.any("/*", lambda res, req, data=None: res.write_status(404).end("Not found."))
+app = App()
 
 
 @app.on_error
-def on_error(error, res, req):
-    # here you can log properly the error and do a pretty response to your clients
-    logger.error(f"Some internal error occurred: {error}")
+def on_error(error, res: Response, req: Request):
+    """
+    Handle all unexpected errors that occur in the server.
+    """
+    logger.error(f"An unexpected error occurred: {error}")
     # response and request can be None if the error is in an async function
     if res is not None:
-        # if response exists try to send something
-        res.write_status(500).end("Internal server error")
+        res.write_status(500).end("Internal Server Error")
 
+
+# setup the middleware auth and endpoints
+auth_router = AuthMiddlewareRouter(app, db)
+setup_auth_endpoints(auth_router) # create the endpoints
+    
+
+# handle 404 errors
+app.any("/*", lambda res, req: res.write_status(404).end("Not Found"))
 
 # start the server
-app.listen(3000, lambda config: logger.success(f"Listening on port http://localhost:{config.port}"))
+app.listen(
+    AppListenOptions(port=3000, host="localhost"),
+    lambda config: logger.success(f"Listening on port http://{config.host}:{config.port}")
+)
 app.run()
