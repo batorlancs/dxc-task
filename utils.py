@@ -3,9 +3,9 @@ def is_endpoint_in_scope(endpoint: str, scope: str) -> bool:
     Check if an endpoint is in the scope of a token.
     - "*" access to all endpoints and home
     - "" access to just home (or "/")
-    - "api/" access to all endpoints in the api but not api itself
-    - "api*" access to all endpoints in the api including api itself
-    - "api" access to the specific endpoint
+    - "api/" access to all endpoints in the api but not api itself (or "/api/")
+    - "api*" access to all endpoints in the api including api itself (or "/api*")
+    - "api" access to the specific endpoint (or "/api")
 
     Args:
         token (str): The token to check.
@@ -14,11 +14,14 @@ def is_endpoint_in_scope(endpoint: str, scope: str) -> bool:
     Returns:
         bool: True if the endpoint is in the scope of the token, False otherwise.
     """
-    endpoint = endpoint[1:]  # remove the leading slash
+    # remove leading slash for both
+    endpoint = endpoint[1:]
+    if scope.startswith("/"):
+        scope = scope[1:]
 
     if scope == "*":
         return True
-    if scope == "" or scope == "/":
+    if scope == "":
         return endpoint == ""
 
     if scope.endswith("*"):

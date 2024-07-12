@@ -27,10 +27,10 @@ class ApiTokenData:
 class ApiToken:
     def __init__(
         self,
-        token: Optional[str] = uuid.uuid4().hex,
+        token: Optional[str] = None,
         data: Optional[ApiTokenData] = ApiTokenData(),
     ):
-        self.token = token
+        self.token = token or uuid.uuid4().hex
         self.data = data
 
     def get_token_str(self):

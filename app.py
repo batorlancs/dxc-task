@@ -52,7 +52,7 @@ async def init() -> App:
     
 
     # handle 404 errors
-    app.any("/*", lambda res, req: res.write_status(404).end("Not Found"))
+    app.any("/*", lambda res, req: res.write_status(404).end(f"Not Found, {req.get_url()}"))
 
     # start the server
     app.listen(
