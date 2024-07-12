@@ -5,10 +5,12 @@ from middleware import AuthMiddlewareRouter
 
 def api_1(res, req, data=None):
     res.write_status(200).end("API1")
-    
+
+
 def api_2(res, req, data=None):
     res.write_status(200).end("API2")
-    
+
+
 def api_3(res, req, data=None):
     res.write_status(200).end("API3")
 
@@ -27,14 +29,17 @@ auth_router.get("/api3", api_3)
 app.any("/*", lambda res, req, data=None: res.write_status(404).end("Not found."))
 
 # more error handling
+
+
 @app.on_error
 def on_error(error, res, req):
     # here you can log properly the error and do a pretty response to your clients
     print("Somethind goes %s" % str(error))
     # response and request can be None if the error is in an async function
-    if res != None:
+    if res is not None:
         # if response exists try to send something
         res.write_status(500).end("Internal server error")
+
 
 # start the server
 app.listen(3000, lambda config: print(f"Listening on port http://localhost:{config.port}"))

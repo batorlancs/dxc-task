@@ -1,0 +1,27 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests = "*"
+socketify = "*"
+redis = "*"
+pytest = "*"
+
+[dev-packages]
+autopep8 = "*"
+
+[scripts]
+redis-up = "docker compose up -d"
+redis-down = "docker compose down"
+redis-info = "docker compose ps"
+redis-logs = "docker compose logs"
+app = "python app.py"
+test = "pytest"
+format = "autopep8 --in-place --aggressive --aggressive --recursive . --max-line-length 120"
+format-diff = "autopep8 --diff --aggressive --aggressive --recursive . --max-line-length 120"
+cli = "python cli.py"
+
+[requires]
+python_version = "3.11"
