@@ -1,6 +1,6 @@
 import sys
 from loguru import logger
-from redis_database import RedisDatabase
+from redis_db import db
 from api_token import ApiToken, ApiTokenData
 
 
@@ -13,7 +13,7 @@ class EnvironmentSetupError(Exception):
     pass
 
 
-async def setup_environment_with_args(args: list, db: RedisDatabase = RedisDatabase()):
+async def setup_environment_with_args(args: list):
     """
     Setup the environment based on the arguments given in the command line.
     Use --test to setup the test environment.
@@ -21,7 +21,6 @@ async def setup_environment_with_args(args: list, db: RedisDatabase = RedisDatab
     
     Args:
         args (list): The list of arguments.
-        db (RedisDatabase): The Redis database object.
         
     Raises:
         InvalidArgumentError: If the argument is invalid.
@@ -30,11 +29,11 @@ async def setup_environment_with_args(args: list, db: RedisDatabase = RedisDatab
     if len(args) == 2:
         if args[1] == "--test":
             logger.warning("Setting up the test environment...")
-            await setup_test_environment(db)
+            await setup_test_environment()
             logger.info("Test environment setup complete.")
         elif args[1] == "--empty":
             logger.warning("Setting up the empty environment...")
-            await setup_empty_db_environment(db)
+            await setup_empty_db_environment()
             logger.info("Empty environment setup complete.")
         else:
             raise InvalidArgumentError("Invalid environment argument. Try using --test or --empty.")
@@ -44,14 +43,14 @@ async def setup_environment_with_args(args: list, db: RedisDatabase = RedisDatab
         logger.info("Using the default environment...")
 
 
-async def setup_empty_db_environment(db: RedisDatabase = RedisDatabase()):
+async def setup_empty_db_environment():
     try:
         await db.clear_all_tokens()
     except Exception as e:
         raise EnvironmentSetupError(f"Error setting up the empty database environment: {e}")
 
 
-async def setup_test_environment(db: RedisDatabase = RedisDatabase()):
+async def setup_test_environment():
     try:
         await db.clear_all_tokens()
         # create a admin token to access all the APIs, 10 access limit

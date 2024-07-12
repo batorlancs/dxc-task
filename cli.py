@@ -1,12 +1,12 @@
 import sys
-import redis_database
+import redis_db
 import asyncio
 from api_token import ApiToken, ApiTokenData
+from redis_db import db
 
 
 async def run_command(args: list[str]):
     # connect to the Redis database
-    db = redis_database.RedisDatabase()
 
     if len(args) < 1:
         raise RuntimeError("No command provided. Try: create, delete, or use.")

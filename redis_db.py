@@ -11,16 +11,13 @@ DEFAULT_MAX_TIME_SECONDS = 5
 ROOT_PATH = Path.root_path()
 
 
-class RedisDatabase:
+class RedisDatabaseManager:
     def __init__(self, check_connection: bool = False):
         self.r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
         if check_connection:
             logger.info("Checking connection to Redis...")
             if not self.check_connection():
-                logger.error("Redis Connection Failed.")
                 raise ServerError('Could not connect to Redis.')
-            else:
-                logger.success("Redis Connection Successful.")
         
     def check_connection(self) -> bool:
         try:
@@ -45,7 +42,7 @@ class RedisDatabase:
         logger.debug("All tokens cleared (database flushed).")
 
 
-    async def create_token(self, api_token: Optional[ApiToken] = ApiToken()):
+    async def create_token(self, api_token: Optional[ApiToken] = ApiToken()) -> ApiToken:
         """
         Create a token in Redis with the given access count and limit.
 
@@ -73,10 +70,14 @@ class RedisDatabase:
                 pipe.multi()
                 pipe.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
                 pipe.json().get(token_str)
+                pipe.unwatch()
                 res = pipe.execute()
                 print(res)
+                
+                # !TODO: check if pipelineing was successful
+                
                 logger.debug(f"Token created: {token_str}")
-                break
+                return ApiToken(token_str, ApiTokenData(**res[1]))
 
             except redis.WatchError:
                 # If a WatchError is raised, it means that the watched key was modified
@@ -84,47 +85,7 @@ class RedisDatabase:
                 # case, retry the operation.
                 pipe.unwatch()
                 continue
-            
-            finally:
-                pipe.unwatch()
 
-
-    # async def create_token(self, api_token: Optional[ApiToken] = ApiToken()):
-    #     """
-    #     Create a token in Redis with the given access count and limit.
-
-    #     Args:
-    #         token (str): The token to create.
-    #         access_count (int): The number of times the token has been accessed.
-    #         access_limit (int): The maximum number of times the token can be accessed.
-    #     """
-    #     start_timestamp = self.get_timestamp_seconds()
-    #     token_str = api_token.get_token_str()
-
-    #     while True:
-    #         if self.is_timeout(start_timestamp):
-    #             raise ServerError('Operation timed out. Please try again later.')
-
-    #         try:
-    #             # Watch the token for changes
-    #             self.r.watch(token_str)
-
-    #             if (int(self.r.exists(token_str)) == 1):
-    #                 raise ServerError('Token already exists.')
-
-    #             self.r.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
-    #             logger.debug(f"Token created: {token_str}")
-    #             break
-
-    #         except redis.WatchError:
-    #             # If a WatchError is raised, it means that the watched key was modified
-    #             # by another client before the transaction could be completed. In this
-    #             # case, retry the operation.
-    #             self.r.unwatch()
-    #             continue
-            
-    #         finally:
-    #             self.r.unwatch()
 
     async def delete_token(self, token: str, throw_error_on_not_found: bool = True):
         """
@@ -167,15 +128,16 @@ class RedisDatabase:
 
         
         while True:
+            pipe = self.r.pipeline()
             if self.is_timeout(start_timestamp):
                 raise ServerError('Operation timed out. Please try again later.')
 
             try:
                 # Watch the token for changes
-                self.r.watch(token_str)
+                pipe.watch(token_str)
 
                 # Fetch current values
-                token_data = self.r.json().get(token_str)
+                token_data = pipe.json().get(token_str)
 
                 if not token_data:
                     raise AuthenticationError('Token is not valid.')
@@ -183,14 +145,22 @@ class RedisDatabase:
                 if not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
                     raise ForbiddenError('Token is not authorized to access this endpoint.')
 
-                token_data['access_count'] += 1
-                if token_data['access_count'] >= token_data['access_limit']:
-                    self.r.delete(token_str)
+                pipe.multi()
+                
+                if token_data['access_count'] + 1 >= token_data['access_limit']:
+                    pipe.delete(token_str)
                 else:
-                    self.r.json().numincrby(token_str, 'access_count', 1)
+                    pipe.json().numincrby(token_str, 'access_count', 1)
 
-                logger.debug(f"Token used: {token_str}, with current access_count: {token_data['access_count']}")
-                return ApiToken(token, ApiTokenData(**token_data))
+                pipe.json().get(token_str)
+                pipe.unwatch()
+                res = pipe.execute()
+                print(res)
+
+                # !TODO: check if pipelineing was successful
+
+                logger.debug(f"Token used: {token_str}, with current access_count: {res[0]}")
+                return ApiToken(token_str, ApiTokenData(**res[1]))
 
             except redis.WatchError:
                 # If a WatchError is raised, it means that the watched key was modified
@@ -198,6 +168,6 @@ class RedisDatabase:
                 # case, retry the operation.
                 self.r.unwatch()
                 continue
-            
-            finally:
-                self.r.unwatch()
+
+
+db = RedisDatabaseManager()

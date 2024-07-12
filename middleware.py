@@ -1,14 +1,13 @@
 from loguru import logger
-from redis_database import RedisDatabase
+from redis_db import db
 from socketify import App, MiddlewareRouter, Response, Request
 from errors import ServerError, AuthenticationError, NotFoundError
 
 
 class AuthMiddlewareRouter(MiddlewareRouter):
-    def __init__(self, app: App, db: RedisDatabase):
+    def __init__(self, app: App):
         super().__init__(app, self.auth)
         self.app = app
-        self.db = db
 
     def check_headers(self, headers: dict):
         if "token" not in headers:
@@ -21,7 +20,7 @@ class AuthMiddlewareRouter(MiddlewareRouter):
 
         try:
             self.check_headers(headers)
-            response = await self.db.get_and_use_token(headers["token"], url)
+            response = await db.get_and_use_token(headers["token"], url)
             return response
 
         except ServerError as e:

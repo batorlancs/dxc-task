@@ -2,12 +2,11 @@ import pytest
 import requests
 from tests.config import API1_URL, API2_URL, API3_URL
 from environments import setup_test_environment
-from redis_database import RedisDatabase
+from redis_db import db
 from api_token import ApiToken, ApiTokenData
 
 
 async def create_token_to_use() -> ApiToken:
-    db = RedisDatabase()
     token = ApiToken(token="admin5", data=ApiTokenData(0, 3, ["api1", "api2", "api3"]))
     await db.create_token(token)
     return token
