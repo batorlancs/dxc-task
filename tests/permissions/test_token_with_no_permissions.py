@@ -17,6 +17,7 @@ async def token():
     yield token
 
 
+@pytest.mark.asyncio(scope="class")
 class TestTokenWithNoPermissions:
     async def test_cant_access_to_api1(self, token: ApiToken):
         resp = requests.get(API1_URL, headers={

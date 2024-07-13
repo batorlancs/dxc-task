@@ -12,6 +12,7 @@ async def create_token_with_single_permission(permission: str) -> ApiToken:
     return token
 
 
+@pytest.mark.asyncio(scope="class")
 class TestTokenWithSinglePermission:
     
     # permission: "" (home)
