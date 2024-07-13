@@ -7,7 +7,8 @@ tests: Dict[str, List[str]] = {
         'test_permission_single.py',
         'test_permission_single_leadingslash.py',
         'test_permission_all.py',
-        'test_permission_none.py'
+        'test_permission_none.py',
+        'test_permission_multi.py',
     ],
     'main': [
         'test_api_response.py'
