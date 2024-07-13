@@ -15,9 +15,10 @@ async def create_token_to_use() -> ApiToken:
 async def token():
     token = await create_token_to_use()
     yield token
+    await db.delete_token(token.token)
 
 
-class TestApiResponse:
+class TestResponse:
     async def test_api1_response(self, token: ApiToken):
         resp = requests.get(API1_URL, headers={
             "token": token.token

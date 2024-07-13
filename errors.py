@@ -25,7 +25,7 @@ class AuthenticationError(ServerError):
     """
 
     def __init__(self, message):
-        super().__init__(message, 401, "Unable to Authenticate: ")
+        super().__init__(message, 401, "Unauthorized: ")
 
 
 class ForbiddenError(ServerError):

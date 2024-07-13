@@ -55,6 +55,10 @@ class RedisDatabaseManager:
         token_str = api_token.get_token_str()
         max_retries = DEFAULT_MAX_RETRIES
         curr_retries = 0
+        
+        # validate the token attributes
+        if not api_token.validate():
+            raise ServerError('Token data is not valid, please check the data provided.')
        
         while True:
             pipe = self.r.pipeline()
