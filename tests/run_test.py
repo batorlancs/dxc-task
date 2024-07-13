@@ -5,10 +5,8 @@ from typing import Dict, List
 tests: Dict[str, List[str]] = {
     'permissions': [
         'test_permission_single.py',
-        'test_permission_single_leadingslash.py',
-        'test_permission_all.py',
-        'test_permission_none.py',
         'test_permission_multi.py',
+        'test_permission_syntax.py'
     ],
     'main': [
         'test_api_response.py'
@@ -27,7 +25,7 @@ def run_all_tests():
             if test_group == 'main':
                 res = pytest.main(["-v", f"tests/{test_file}", "--tb=no"])
             else:
-                res = pytest.main(["-v", f"tests/{test_group}/{test_file}"])
+                res = pytest.main(["-v", f"tests/{test_group}/{test_file}", "--tb=no"])
             if res != 0:
                 if test_group not in tests_failed:
                     tests_failed[test_group] = []

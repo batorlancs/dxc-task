@@ -25,7 +25,7 @@ def is_endpoint_in_scope(endpoint: str, scope: str) -> bool:
         return endpoint == ""
 
     if scope.endswith("*"):
-        return endpoint.startswith(scope[:-1])
+        return endpoint == scope[:-1] or endpoint.startswith(scope[:-1] + "/")
 
     if scope.endswith("/"):
         return endpoint.startswith(scope)
