@@ -53,13 +53,6 @@ async def setup_empty_db_environment():
 async def setup_test_environment():
     try:
         await db.clear_all_tokens()
-        # create a admin token to access all the APIs, 10 access limit
-        await db.create_token(
-            ApiToken("admin10", ApiTokenData(
-                access_limit=10,
-                access_count=0,
-                scopes=["*"]
-            )))
         
         # create a admin token to access all the APIs, 5 access limit
         await db.create_token(
@@ -68,6 +61,31 @@ async def setup_test_environment():
                 access_count=0,
                 scopes=["*"]
             )))
+        
+        # create a admin token to access all the APIs, 10 access limit
+        await db.create_token(
+            ApiToken("admin10", ApiTokenData(
+                access_limit=10,
+                access_count=0,
+                scopes=["*"]
+            )))
+        
+        # create a admin token to access all the APIs, 100 access limit
+        await db.create_token(
+            ApiToken("admin100", ApiTokenData(
+                access_limit=100,
+                access_count=0,
+                scopes=["*"]
+            )))
+        
+        # create a admin token to access all the APIs, 1000 access limit
+        await db.create_token(
+            ApiToken("admin1000", ApiTokenData(
+                access_limit=1000,
+                access_count=0,
+                scopes=["*"]
+            )))
+        
         
     except Exception as e:
         raise EnvironmentSetupError(f"Error setting up the test environment: {e}")
