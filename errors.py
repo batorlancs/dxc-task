@@ -18,7 +18,7 @@ class ServerError(Exception):
 class AuthenticationError(ServerError):
     """
     Class for authentication errors, a subclass of ServerError.
-    status_code is 401.
+    status_code 401.
 
     Args:
         message (str): The error message
@@ -31,7 +31,7 @@ class AuthenticationError(ServerError):
 class ForbiddenError(ServerError):
     """
     Class for forbidden errors, a subclass of ServerError.
-    status_code is 403.
+    status_code 403.
 
     Args:
         message (str): The error message
@@ -44,7 +44,7 @@ class ForbiddenError(ServerError):
 class NotFoundError(ServerError):
     """
     Class for not found errors, a subclass of ServerError.
-    status_code is 404.
+    status_code 404.
 
     Args:
         message (str): The error message

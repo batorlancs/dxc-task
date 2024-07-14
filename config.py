@@ -3,6 +3,7 @@ from loguru import logger
 
 
 def configure_logger():
+    """Style the logger output."""
     logger_format_simple = (
         "<white>{time:YYYY-MM-DD HH:mm:ss.SSS}</white> | "
         "<level>{level: <8}</level> | "
