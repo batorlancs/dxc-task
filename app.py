@@ -25,7 +25,7 @@ def on_error(error, res: Response, req: Request):
 
 async def init() -> App:
     logger.info("Initiating the server...")
-    
+
     # check database connection
     logger.info("Checking connection to Redis...")
     is_connected = db.check_connection()
@@ -33,11 +33,10 @@ async def init() -> App:
         logger.error("Database connection failed. Exiting the server...")
         sys.exit(1)
     logger.success("Database connection successful.")
-    
-    
+
     # setup the middleware auth and endpoints
     auth_router = AuthMiddlewareRouter(app)
-    setup_auth_endpoints(auth_router) # create the endpoints
+    setup_auth_endpoints(auth_router)  # create the endpoints
 
     # setup the environment
     try:
@@ -49,7 +48,6 @@ async def init() -> App:
         logger.error(e)
         logger.info("Exiting the server...")
         sys.exit(1)
-    
 
     # handle 404 errors
     app.any("/*", lambda res, req: res.write_status(404).end(f"Not Found, {req.get_url()}"))

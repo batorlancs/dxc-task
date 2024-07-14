@@ -16,7 +16,7 @@ async def api2(res: Response, req: Request, token: ApiToken | None):
 async def api3(res: Response, req: Request, token: ApiToken | None):
     response = SimulatedApi.get_api3()
     res.write_status(200).end(response)
-    
+
 
 def setup_auth_endpoints(router: MiddlewareRouter):
     router.get("/api1", api1)

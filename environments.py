@@ -9,6 +9,8 @@ class InvalidArgumentError(Exception):
     pass
 
 # exception to handle all errors happening when setting up the environment
+
+
 class EnvironmentSetupError(Exception):
     pass
 
@@ -18,10 +20,10 @@ async def setup_environment_with_args(args: list):
     Setup the environment based on the arguments given in the command line.
     Use --test to setup the test environment.
     Use --empty to setup the empty environment.
-    
+
     Args:
         args (list): The list of arguments.
-        
+
     Raises:
         InvalidArgumentError: If the argument is invalid.
         EnvironmentSetupError: If there is an error setting up the environment.
@@ -53,7 +55,7 @@ async def setup_empty_db_environment():
 async def setup_test_environment():
     try:
         await db.clear_all_tokens()
-        
+
         # create a admin token to access all the APIs, 5 access limit
         await db.create_token(
             ApiToken("admin5", ApiTokenData(
@@ -61,7 +63,7 @@ async def setup_test_environment():
                 access_count=0,
                 scopes=["*"]
             )))
-        
+
         # create a admin token to access all the APIs, 10 access limit
         await db.create_token(
             ApiToken("admin10", ApiTokenData(
@@ -69,7 +71,7 @@ async def setup_test_environment():
                 access_count=0,
                 scopes=["*"]
             )))
-        
+
         # create a admin token to access all the APIs, 100 access limit
         await db.create_token(
             ApiToken("admin100", ApiTokenData(
@@ -77,7 +79,7 @@ async def setup_test_environment():
                 access_count=0,
                 scopes=["*"]
             )))
-        
+
         # create a admin token to access all the APIs, 1000 access limit
         await db.create_token(
             ApiToken("admin1000", ApiTokenData(
@@ -85,9 +87,6 @@ async def setup_test_environment():
                 access_count=0,
                 scopes=["*"]
             )))
-        
-        
+
     except Exception as e:
         raise EnvironmentSetupError(f"Error setting up the test environment: {e}")
-    
-    

@@ -17,7 +17,7 @@ async def run_command(args: list[str]):
         if len(remaining_args) < 1:
             print("Invalid syntax. Did you mean: create <token>")
             return
-        
+
         await db.create_token(
             ApiToken(args[1], ApiTokenData(
                 access_limit=5,
@@ -39,7 +39,7 @@ async def run_command(args: list[str]):
         if len(remaining_args) < 1:
             print("Invalid syntax. Did you mean: use <token>")
             return
-        
+
         token = await db.get_and_use_token(args[1], "/api1")
         print("----------------------------")
         print(token.get_token_str())

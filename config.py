@@ -12,6 +12,6 @@ def configure_logger():
 
     logger.remove()
     logger.add(sys.stderr, format=logger_format_simple)
-    
+
 
 configure_logger()

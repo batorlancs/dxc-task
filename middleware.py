@@ -19,11 +19,14 @@ class AuthMiddlewareRouter(MiddlewareRouter):
         logger.info(f"---> url: {url}, token: {headers['token'] or 'None'}")
 
         try:
+            logger.debug(f"Checking headers...")
             self.check_headers(headers)
+            logger.debug(f"Checking token: {headers['token']}")
             response = await db.get_and_use_token(headers["token"], url)
+            logger.success(f"Authenticated, with token: {response}")
             return response
 
         except ServerError as e:
-            logger.debug(f"Server {e.status_code} Error: {e.message}")
+            logger.error(f"Error {e.status_code}: {e.message}")
             res.write_status(e.status_code).end(e.message_with_prefix)
             return False  # stop the request from being processed further

@@ -5,7 +5,7 @@ from redis_db import db
 from api_token import ApiToken, ApiTokenData
 
 
-async def create_token_with_multiple_permissions(permissions: list[str]) -> ApiToken:
+async def create_token_with_multi_permissions(permissions: list[str]) -> ApiToken:
     token = ApiToken(data=ApiTokenData(0, 3, permissions))
     await db.create_token(token)
     return token
@@ -14,16 +14,16 @@ async def create_token_with_multiple_permissions(permissions: list[str]) -> ApiT
 async def delete_token(token: ApiToken):
     await db.delete_token(token.token)
 
-    
+
 @pytest.mark.asyncio(scope="class")
 class TestPermissionSyntax:
-    
+
     # - "*" access to all endpoints and home
     # - "" access to just home (or "/")
     # - "api/" access to all endpoints in the api but not api itself (or "/api/")
     # - "api*" access to all endpoints in the api including api itself (or "/api*")
     # - "api" access to the specific endpoint (or "/api")
-    
+
     @pytest.mark.parametrize("api_url, permissions, expected_status_code, expected_response", [
         # no permissions
         (API1_URL, [], 403, "Permission Denied"),
@@ -59,7 +59,7 @@ class TestPermissionSyntax:
         (API3_URL, ["api/"], 403, "Permission Denied"),
     ])
     async def test_permission_multi_access_to_apis(self, api_url, permissions, expected_status_code, expected_response):
-        token = await create_token_with_multiple_permissions(permissions)
+        token = await create_token_with_multi_permissions(permissions)
         resp = requests.get(api_url, headers={
             "token": token.token
         })
@@ -69,4 +69,3 @@ class TestPermissionSyntax:
             assert resp.text == expected_response
         else:
             assert resp.text.startswith(expected_response)
-            

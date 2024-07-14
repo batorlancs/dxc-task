@@ -10,7 +10,7 @@ class TokenHandler:
     @staticmethod
     def parse(token: str):
         return token.split(":")[1]
-    
+
     @staticmethod
     def detect(token: str):
         return token.startswith("token:") and len(token) > 6
@@ -26,10 +26,10 @@ class ApiTokenData:
         self.access_count = access_count or 0
         self.access_limit = access_limit or 40
         self.scopes = scopes or []
-    
+
     def validate(self) -> bool:
         return not (self.access_count < 0 or self.access_limit < 0 or self.access_count >= self.access_limit)
-    
+
     @classmethod
     def from_dict(cls, data_dict: dict = None):
         data_dict = data_dict or {}
@@ -57,10 +57,10 @@ class ApiToken:
 
     def get_token_str(self) -> str:
         return TokenHandler.format(self.token)
-    
+
     def validate(self) -> bool:
         data_valid = self.data.validate()
-        valid = True # implement if needed
+        valid = True  # implement if needed
         return data_valid and valid
 
     @classmethod

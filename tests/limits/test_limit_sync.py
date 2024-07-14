@@ -11,16 +11,6 @@ async def create_token(permissions: list[str], count: int = 0, limit: int = 10) 
     return token
 
 
-async def delete_token(token: ApiToken):
-    await db.delete_token(token.token)
-
-
-def get_api_response(url: str, token: ApiToken):
-    return requests.get(url, headers={
-        "token": token.token
-    })
-
-    
 @pytest.mark.asyncio(scope="class")
 class TestLimitSync:
     @pytest.mark.parametrize("count, limit", [
@@ -35,12 +25,11 @@ class TestLimitSync:
         token = await create_token(["api1"], count, limit)
         # use up all the api calls
         for _ in range(count, limit):
-            resp = get_api_response(API1_URL, token)
+            resp = requests.get(API1_URL, headers={"token": token.token})
             assert resp.status_code == 200
             assert resp.text == "API1"
-            
+
         # limit reached
-        resp = get_api_response(API1_URL, token)
+        resp = requests.get(API1_URL, headers={"token": token.token})
         assert resp.status_code == 401
         assert resp.text.startswith("Unauthorized")
-

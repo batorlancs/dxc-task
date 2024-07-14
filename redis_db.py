@@ -18,7 +18,7 @@ class RedisDatabaseManager:
         if check_connection:
             if not self.check_connection():
                 raise ServerError('Could not connect to Redis.')
-        
+
     def check_connection(self) -> bool:
         try:
             self.r.ping()
@@ -41,7 +41,6 @@ class RedisDatabaseManager:
         self.r.flushdb()
         logger.debug("All tokens cleared (database flushed).")
 
-
     async def create_token(self, api_token: Optional[ApiToken] = ApiToken()) -> ApiToken:
         """
         Create a token in Redis with the given access count and limit.
@@ -55,11 +54,11 @@ class RedisDatabaseManager:
         token_str = api_token.get_token_str()
         max_retries = DEFAULT_MAX_RETRIES
         curr_retries = 0
-        
+
         # validate the token attributes
         if not api_token.validate():
             raise ServerError('Token data is not valid, please check the data provided.')
-       
+
         while True:
             pipe = self.r.pipeline()
             if self.is_timeout(start_timestamp):
@@ -78,9 +77,9 @@ class RedisDatabaseManager:
                 pipe.unwatch()
                 res = pipe.execute()
                 logger.debug(res)
-                
-                pipe_success = res[0] == True and res[1] is not None and res[2] == True
-                
+
+                pipe_success = res[0] and res[1] is not None and res[2]
+
                 # This is in case the same client is trying to use the token multiple times asynchronously
                 if not pipe_success:
                     if curr_retries < max_retries:
@@ -89,7 +88,7 @@ class RedisDatabaseManager:
                         continue
                     else:
                         raise ServerError('Token creation failed.')
-                
+
                 logger.debug(f"Token created: {token_str}")
                 return ApiToken.from_dict({'token': token_str, 'data': res[1]})
 
@@ -99,7 +98,9 @@ class RedisDatabaseManager:
                 # case, retry the operation.
                 pipe.unwatch()
                 continue
-
+            
+            finally:
+                pipe.unwatch()
 
     async def delete_token(self, token: str, throw_error_on_not_found: bool = False):
         """
@@ -141,7 +142,7 @@ class RedisDatabaseManager:
         start_timestamp = self.get_timestamp_seconds()
         max_retries = DEFAULT_MAX_RETRIES
         curr_retries = 0
-        
+
         while True:
             pipe = self.r.pipeline()
             if self.is_timeout(start_timestamp):
@@ -159,24 +160,24 @@ class RedisDatabaseManager:
 
                 if url and not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
                     raise ForbiddenError('Token is not authorized to access this endpoint.')
-                
+
                 reached_access_limit = token_data['access_count'] + 1 >= token_data['access_limit']
-                pipe.multi() # Start multi transaction
-                pipe.json().numincrby(token_str, 'access_count', 1) # Increment access count
-                pipe.json().get(token_str) # Get updated token data
+                pipe.multi()  # Start multi transaction
+                pipe.json().numincrby(token_str, 'access_count', 1)  # Increment access count
+                pipe.json().get(token_str)  # Get updated token data
 
                 # Delete token if access limit is reached
                 if reached_access_limit:
                     pipe.delete(token_str)
 
                 pipe.unwatch()
-                res = pipe.execute() # Execute multi transaction
-                
+                res = pipe.execute()  # Execute multi transaction
+
                 logger.debug(res)
 
                 # Check if the transaction was successful
-                pipe_success_when_inc = len(res) == 3 and res[0] >= 1 and res[1] is not None and res[2] == True
-                pipe_success_when_del = len(res) == 4 and res[0] >= 1 and res[1] is not None and res[2] == 1 and res[3] == True
+                pipe_success_when_inc = len(res) == 3 and res[0] >= 1 and res[1] is not None and res[2]
+                pipe_success_when_del = len(res) == 4 and res[0] >= 1 and res[1] is not None and res[2] == 1 and res[3]
                 pipe_success = pipe_success_when_del if reached_access_limit else pipe_success_when_inc
 
                 # This is in case the same client is trying to use the token multiple times asynchronously
@@ -195,8 +196,12 @@ class RedisDatabaseManager:
                 # If a WatchError is raised, it means that the watched key was modified
                 # by another client before the transaction could be completed. In this
                 # case, retry the operation.
-                self.r.unwatch()
+                pipe.unwatch()
                 continue
+            
+            finally:
+                pipe.unwatch()
+                logger.debug(f"Token unwatched: {token_str}")
 
 
 db = RedisDatabaseManager()
