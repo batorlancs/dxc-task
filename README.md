@@ -19,63 +19,63 @@ The project includes the following simulated API endpoints that return strings:
 The server is built with the following considerations:
 
 - Utilizes the Socketify Python server with an object-oriented approach.
-- Employs a local database for authorization information (tracks which user accesses which API, limits, etc.).
+- Employs a local database (redis) for authorization information (tracks which user accesses which API, limits, etc.).
 
 ## Testing
 
 The following tests are implemented to ensure functionality:
 
 1. **Simple Test**: Verifies that the correct response is received from each API endpoint.
-2. **API Key Test**: Checks if an invalid API key is correctly denied access to the API.
+2. **API Key Test**: Checks if an invalid API key or an API key with no access to an API is denied access.
 3. **Limit Test**: Ensures that the server responds with an error when usage limits are exceeded.
 
 ## Getting Started
 
 ### Prerequisites
 
-- Python 3.x
-- Redis
-
-### Installation
-
-1. Clone the repository:
-
-    ```sh
-    git clone https://github.com/batorlancs/dxc-task.git
-    cd dxc-task
-    ```
-
-2. Create a virtual environment and activate it:
-
-    ```sh
-    python -m venv venv
-    source venv/bin/activate
-    # On Windows CMD use `venv\Scripts\activate.bat`
-    # On Windows PWSH use `venv\Scripts\Activate.ps1`
-    ```
-
-3. Install the required packages:
-
-    ```sh
-    pip install -r requirements.txt
-    ```
-
-4. Ensure Redis is installed and running. Refer to [Redis installation documentation](https://redis.io/docs/getting-started/installation/) for more details.
+- Docker Engine - [Installation](https://docs.docker.com/engine/install/)
+- Pipenv - [Installation](https://pipenv.pypa.io/en/latest/installation.html)
 
 ### Running the Server
 
-Start the server using:
+1. **Clone the repository**
 
-```sh
-python server.py
-```
+2. **Install the dependencies**
+
+    ```sh
+    pipenv install
+    ```
+
+3. **Start Docker engine**
+
+4. **Start Redis server**
+
+    ```sh
+    pipenv run redis-up
+    ```
+
+5. **Start the server** (optionally with the `--empty` or `--test` flag)
+
+    ```sh
+    pipenv run app
+    pipenv run app --empty # empty the redis database and start the server
+    pipenv run app --test # empty and create tokens for testing (admin5, admin10, admin100, admin1000)
+    ```
 
 ### Running Tests
 
 Run the tests with:
 
+> **Note**: For the tests to run, the server **must** be running. (except for some tests)
+
 ```sh
-pytest
+pypenv run test
+```
+
+Run the tests that have a specific keyword in their name:
+
+```sh
+pipenv run test -k <keyword>
 ```
 
 ## References
