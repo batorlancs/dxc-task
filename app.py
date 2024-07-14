@@ -1,7 +1,7 @@
 import sys
 import asyncio
 import config
-from redis_db import db
+from db.db_manager import db
 from loguru import logger
 from socketify import App, Response, Request, AppListenOptions
 from middleware import AuthMiddlewareRouter

@@ -1,5 +1,5 @@
 from loguru import logger
-from redis_db import db
+from db.db_manager import db
 from socketify import App, MiddlewareRouter, Response, Request
 from errors import ServerError, AuthenticationError, NotFoundError
 

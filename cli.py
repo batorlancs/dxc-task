@@ -1,8 +1,8 @@
 import sys
-import redis_db
+import db.db_manager as db_manager
 import asyncio
 from api_token import ApiToken, ApiTokenData
-from redis_db import db
+from db.db_manager import db
 
 
 async def run_command(args: list[str]):

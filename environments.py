@@ -1,6 +1,6 @@
 import sys
 from loguru import logger
-from redis_db import db
+from db.db_manager import db
 from api_token import ApiToken, ApiTokenData
 
 
