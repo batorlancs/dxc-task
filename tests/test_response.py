@@ -7,7 +7,7 @@ from api_token import ApiToken, ApiTokenData
 
 async def create_token_to_use() -> ApiToken:
     token = ApiToken(data=ApiTokenData(0, 3, ["api1", "api2", "api3"]))
-    await db.create_token(token)
+    db.create_token(token)
     return token
 
 
@@ -15,7 +15,7 @@ async def create_token_to_use() -> ApiToken:
 async def token():
     token = await create_token_to_use()
     yield token
-    await db.delete_token(token.token)
+    db.delete_token(token.token)
 
 
 @pytest.mark.asyncio(scope="class")

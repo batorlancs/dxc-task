@@ -22,7 +22,7 @@ class AuthMiddlewareRouter(MiddlewareRouter):
             logger.debug(f"Checking headers...")
             self.check_headers(headers)
             logger.debug(f"Checking token: {headers['token']}")
-            response = await db.get_and_use_token(headers["token"], url)
+            response = db.get_and_use_token(headers["token"], url)
             logger.success(f"Authenticated, with token: {response}")
             return response
 

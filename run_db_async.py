@@ -12,10 +12,10 @@ async def run_db_async():
             # wait random small amount of time
             await asyncio.sleep((random.random() * 0.1) + 1)
             print("Trying to get token, client:", i)
-            return await db.get_and_use_token(token)
+            return db.get_and_use_token(token)
 
     print("Creating token..")
-    token = await db.create_token(
+    token = db.create_token(
         ApiToken(
             data=ApiTokenData(
                 access_limit=500,

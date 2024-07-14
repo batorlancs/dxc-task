@@ -7,7 +7,7 @@ from api_token import ApiToken, ApiTokenData, TokenHandler
 from errors import ServerError, AuthenticationError, ForbiddenError
 
 
-DEFAULT_MAX_TIME_SECONDS = 5
+DEFAULT_MAX_TIME_SECONDS = 2
 DEFAULT_MAX_RETRIES = 10
 ROOT_PATH = Path.root_path()
 
@@ -34,14 +34,14 @@ class RedisDatabaseManager:
     def is_timeout(self, start_timestamp_seconds: int, max_time_seconds: int = DEFAULT_MAX_TIME_SECONDS) -> bool:
         return self.get_timestamp_seconds() - start_timestamp_seconds > max_time_seconds
 
-    async def clear_all_tokens(self):
+    def clear_all_tokens(self):
         """
         Clear all tokens in Redis.
         """
-        self.r.flushdb()
+        self.r.flushall()
         logger.debug("All tokens cleared (database flushed).")
 
-    async def create_token(self, api_token: Optional[ApiToken] = ApiToken()) -> ApiToken:
+    def create_token(self, api_token: Optional[ApiToken] = ApiToken()) -> ApiToken:
         """
         Create a token in Redis with the given access count and limit.
 
@@ -60,49 +60,31 @@ class RedisDatabaseManager:
             raise ServerError('Token data is not valid, please check the data provided.')
 
         while True:
-            pipe = self.r.pipeline()
-            if self.is_timeout(start_timestamp):
-                raise ServerError('Operation timed out. Please try again later.')
-
-            try:
-                # Watch the token for changes
-                pipe.watch(token_str)
-
-                if (int(pipe.exists(token_str)) == 1):
-                    raise ServerError('Token already exists.')
+            with self.r.pipeline() as pipe:
+                if self.is_timeout(start_timestamp):
+                    raise ServerError('Operation timed out. Please try again later.')
 
                 pipe.multi()
                 pipe.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
                 pipe.json().get(token_str)
-                pipe.unwatch()
                 res = pipe.execute()
                 logger.debug(res)
 
-                pipe_success = res[0] and res[1] is not None and res[2]
+                pipe_success = res[0] and res[1] is not None
 
                 # This is in case the same client is trying to use the token multiple times asynchronously
                 if not pipe_success:
                     if curr_retries < max_retries:
                         curr_retries += 1
-                        logger.debug(f"...Retrying to use token: {token_str}")
+                        logger.error(f"...Retrying to create token: {token_str}")
                         continue
                     else:
                         raise ServerError('Token creation failed.')
 
                 logger.debug(f"Token created: {token_str}")
                 return ApiToken.from_dict({'token': token_str, 'data': res[1]})
-
-            except redis.WatchError:
-                # If a WatchError is raised, it means that the watched key was modified
-                # by another client before the transaction could be completed. In this
-                # case, retry the operation.
-                pipe.unwatch()
-                continue
             
-            finally:
-                pipe.unwatch()
-
-    async def delete_token(self, token: str, throw_error_on_not_found: bool = False):
+    def delete_token(self, token: str):
         """
         Delete a token from Redis.
 
@@ -111,11 +93,12 @@ class RedisDatabaseManager:
         """
         # 1: deleted existing, 0: does not exist
         result = self.r.delete(TokenHandler.format(token))
-        if throw_error_on_not_found and result == 0:
-            raise ServerError('Token does not exist.')
-        logger.debug(f"Token deleted: {token}")
+        if result == 0:
+            logger.debug(f"Token delete, does not exist: {token}")
+        
+        logger.debug(f"Token delete, success: {token}")
 
-    async def token_exists(self, token: str) -> bool:
+    def token_exists(self, token: str) -> bool:
         """
         Check if a token exists in Redis.
 
@@ -131,7 +114,7 @@ class RedisDatabaseManager:
 
         return True
 
-    async def get_and_use_token(self, token: str, url: str = None) -> ApiToken:
+    def get_and_use_token(self, token: str, url: str = None) -> ApiToken:
         """
         Use a token in Redis.
 
@@ -144,64 +127,62 @@ class RedisDatabaseManager:
         curr_retries = 0
 
         while True:
-            pipe = self.r.pipeline()
-            if self.is_timeout(start_timestamp):
-                raise ServerError('Operation timed out. Please try again later.')
+            with self.r.pipeline() as pipe:
+                if self.is_timeout(start_timestamp):
+                    raise ServerError('Operation timed out. Please try again later.')
 
-            try:
-                # Watch the token for changes
-                pipe.watch(token_str)
+                try:
+                    # Watch the token for changes
+                    pipe.watch(token_str)
 
-                # Fetch current values
-                token_data = pipe.json().get(token_str)
+                    # Fetch current values
+                    token_data = pipe.json().get(token_str)
 
-                if not token_data:
-                    raise AuthenticationError('Token is not valid.')
+                    if not token_data:
+                        raise AuthenticationError('Token is not valid.')
 
-                if url and not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
-                    raise ForbiddenError('Token is not authorized to access this endpoint.')
+                    if url and not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
+                        raise ForbiddenError('Token is not authorized to access this endpoint.')
 
-                reached_access_limit = token_data['access_count'] + 1 >= token_data['access_limit']
-                pipe.multi()  # Start multi transaction
-                pipe.json().numincrby(token_str, 'access_count', 1)  # Increment access count
-                pipe.json().get(token_str)  # Get updated token data
+                    reached_access_limit = token_data['access_count'] + 1 >= token_data['access_limit']
+                    pipe.multi()  # Start multi transaction
+                    pipe.json().numincrby(token_str, 'access_count', 1)  # Increment access count
+                    pipe.json().get(token_str)  # Get updated token data
 
-                # Delete token if access limit is reached
-                if reached_access_limit:
-                    pipe.delete(token_str)
+                    # Delete token if access limit is reached
+                    if reached_access_limit:
+                        pipe.delete(token_str)
 
-                pipe.unwatch()
-                res = pipe.execute()  # Execute multi transaction
+                    pipe.unwatch()
+                    res = pipe.execute()  # Execute multi transaction
 
-                logger.debug(res)
+                    logger.debug(res)
 
-                # Check if the transaction was successful
-                pipe_success_when_inc = len(res) == 3 and res[0] >= 1 and res[1] is not None and res[2]
-                pipe_success_when_del = len(res) == 4 and res[0] >= 1 and res[1] is not None and res[2] == 1 and res[3]
-                pipe_success = pipe_success_when_del if reached_access_limit else pipe_success_when_inc
+                    # Check if the transaction was successful
+                    pipe_success_when_inc = len(res) == 3 and res[0] >= 1 and res[1] is not None and res[2]
+                    pipe_success_when_del = len(res) == 4 and res[0] >= 1 and res[1] is not None and res[2] == 1 and res[3]
+                    pipe_success = pipe_success_when_del if reached_access_limit else pipe_success_when_inc
 
-                # This is in case the same client is trying to use the token multiple times asynchronously
-                if not pipe_success:
-                    if curr_retries < max_retries:
-                        curr_retries += 1
-                        logger.debug(f"Pipeline error, retrying to use token: {token_str}")
-                        continue
-                    else:
-                        raise ServerError('Token usage failed.')
+                    # This is in case the same client is trying to use the token multiple times asynchronously
+                    if not pipe_success:
+                        if curr_retries < max_retries:
+                            curr_retries += 1
+                            logger.error(f"Pipeline error, retrying to use token: {token_str}")
+                            continue
+                        else:
+                            raise ServerError('Token usage failed.')
 
-                logger.debug(f"Token used: {token_str}, with current access_count: {res[1]['access_count']}")
-                return ApiToken.from_dict({'token': token_str, 'data': res[1]})
+                    logger.debug(f"Token used: {token_str}, with current access_count: {res[1]['access_count']}")
+                    return ApiToken.from_dict({'token': token_str, 'data': res[1]})
 
-            except redis.WatchError:
-                # If a WatchError is raised, it means that the watched key was modified
-                # by another client before the transaction could be completed. In this
-                # case, retry the operation.
-                pipe.unwatch()
-                continue
+                except redis.WatchError:
+                    # If a WatchError is raised, it means that the watched key was modified
+                    # by another client before the transaction could be completed. In this
+                    # case, retry the operation.
+                    pipe.unwatch()
+                    logger.error(f"Token watch error: {token_str}")
+                    continue
             
-            finally:
-                pipe.unwatch()
-                logger.debug(f"Token unwatched: {token_str}")
 
 
 db = RedisDatabaseManager()
