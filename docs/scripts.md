@@ -17,6 +17,8 @@ pipenv run app --test # empty and create tokens for testing (admin5, admin10, ad
 
 ## Redis/Docker Scripts
 
+> **Note**: Docker Engine needs to be running to use these scripts.
+
 ```bash
 pipenv run redis-up # Start Redis container
 pipenv run redis-down # Stop Redis container

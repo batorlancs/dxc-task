@@ -50,12 +50,12 @@ class AuthMiddlewareRouter(MiddlewareRouter):
             }
             error_response = error_mapping.get(type(e), ServerError(e.message))
 
-            logger.error(f"Error {error_response.status_code}: {error_response.message}")
+            logger.error(f"Responded: Error {error_response.status_code}: {error_response.message}")
             res.write_status(error_response.status_code).end(error_response.message_with_prefix)
             return False  # stop the request from being processed further
 
         except ServerError as e:
             # errors related to the server
-            logger.error(f"Error {e.status_code}: {e.message}")
+            logger.error(f"Responded: Error {e.status_code}: {e.message}")
             res.write_status(e.status_code).end(e.message_with_prefix)
             return False
