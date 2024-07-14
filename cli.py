@@ -20,8 +20,8 @@ async def run_command(args: list[str]):
 
         db.create_token(
             ApiToken(args[1], ApiTokenData(
-                access_limit=5,
-                access_count=2,
+                access_limit=100,
+                access_count=0,
                 scopes=["*"]
             ))
         )
