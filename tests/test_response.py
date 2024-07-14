@@ -21,22 +21,16 @@ async def token():
 @pytest.mark.asyncio(scope="class")
 class TestResponse:
     async def test_api1_response(self, token: ApiToken):
-        resp = requests.get(API1_URL, headers={
-            "token": token.token
-        })
+        resp = requests.get(API1_URL, headers={"token": token.token})
         assert resp.status_code == 200
         assert resp.text == "API1"
 
     async def test_api2_response(self, token: ApiToken):
-        resp = requests.get(API2_URL, headers={
-            "token": token.token
-        })
+        resp = requests.get(API2_URL, headers={"token": token.token})
         assert resp.status_code == 200
         assert resp.text == "API2"
 
     async def test_api3_response(self, token: ApiToken):
-        resp = requests.get(API3_URL, headers={
-            "token": token.token
-        })
+        resp = requests.get(API3_URL, headers={"token": token.token})
         assert resp.status_code == 200
         assert resp.text == "API3"
