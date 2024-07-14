@@ -3,8 +3,8 @@ import utils
 from loguru import logger
 from redis.commands.json.path import Path
 from typing import Optional
-from api_token import ApiToken, ApiTokenData, TokenHandler
-from errors import ServerError, AuthenticationError, ForbiddenError
+from api_token import ApiToken, TokenHandler
+from db.errors import DatabaseError, TokenError, TokenNotValidError, TokenPermissionError
 
 
 DEFAULT_MAX_TIME_SECONDS = 2
@@ -17,7 +17,7 @@ class RedisDatabaseManager:
         self.r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
         if check_connection:
             if not self.check_connection():
-                raise ServerError('Could not connect to Redis.')
+                raise DatabaseError('Could not connect to Redis.')
 
     def check_connection(self) -> bool:
         try:
@@ -26,12 +26,12 @@ class RedisDatabaseManager:
         except redis.ConnectionError:
             return False
 
-    # Get the current timestamp in seconds
     def get_timestamp_seconds(self) -> int:
+        """Get the current timestamp in seconds"""
         return self.r.time()[0]
 
-    # Check if the operation has timed out
     def is_timeout(self, start_timestamp_seconds: int, max_time_seconds: int = DEFAULT_MAX_TIME_SECONDS) -> bool:
+        """Check if the operation has timed out"""
         return self.get_timestamp_seconds() - start_timestamp_seconds > max_time_seconds
 
     def clear_all_tokens(self):
@@ -49,6 +49,13 @@ class RedisDatabaseManager:
             token (str): The token to create.
             access_count (int): The number of times the token has been accessed.
             access_limit (int): The maximum number of times the token can be accessed.
+
+        Returns:
+            ApiToken: The token data.
+
+        Raises:
+            TokenError: If the token creation failed.
+            DatabaseError: If the operation timed out.
         """
         start_timestamp = self.get_timestamp_seconds()
         token_str = api_token.get_token_str()
@@ -57,12 +64,12 @@ class RedisDatabaseManager:
 
         # validate the token attributes
         if not api_token.validate():
-            raise ServerError('Token data is not valid, please check the data provided.')
+            raise TokenError('Token data is not valid, please check the data provided.')
 
         while True:
             with self.r.pipeline() as pipe:
                 if self.is_timeout(start_timestamp):
-                    raise ServerError('Operation timed out. Please try again later.')
+                    raise DatabaseError('Operation timed out. Please try again later.')
 
                 pipe.multi()
                 pipe.json().set(token_str, ROOT_PATH, api_token.data.__dict__)
@@ -79,7 +86,7 @@ class RedisDatabaseManager:
                         logger.error(f"...Retrying to create token: {token_str}")
                         continue
                     else:
-                        raise ServerError('Token creation failed.')
+                        raise TokenError('Token creation failed.')
 
                 logger.debug(f"Token created: {token_str}")
                 return ApiToken.from_dict({'token': token_str, 'data': res[1]})
@@ -120,6 +127,15 @@ class RedisDatabaseManager:
 
         Args:
             token (str): The token to use.
+
+        Returns:
+            ApiToken: The token data.
+
+        Raises:
+            TokenNotValidError: If the token is not valid.
+            TokenPermissionError: If the token does not have the correct permissions.
+            TokenError: If the token usage failed.
+            DatabaseError: If the operation timed out.
         """
         token_str = TokenHandler.format(token)
         start_timestamp = self.get_timestamp_seconds()
@@ -129,7 +145,7 @@ class RedisDatabaseManager:
         while True:
             with self.r.pipeline() as pipe:
                 if self.is_timeout(start_timestamp):
-                    raise ServerError('Operation timed out. Please try again later.')
+                    raise DatabaseError('Operation timed out. Please try again later.')
 
                 try:
                     # Watch the token for changes
@@ -139,12 +155,13 @@ class RedisDatabaseManager:
                     token_data = pipe.json().get(token_str)
 
                     if not token_data:
-                        raise AuthenticationError('Token is not valid.')
+                        raise TokenNotValidError('Token is not valid.')
 
                     if url and not utils.is_endpoint_in_any_scope(url, token_data['scopes']):
-                        raise ForbiddenError('Token is not authorized to access this endpoint.')
+                        raise TokenPermissionError('Token is not authorized to access this endpoint.')
 
                     reached_access_limit = token_data['access_count'] + 1 >= token_data['access_limit']
+
                     pipe.multi()  # Start multi transaction
                     pipe.json().numincrby(token_str, 'access_count', 1)  # Increment access count
                     pipe.json().get(token_str)  # Get updated token data
@@ -171,7 +188,7 @@ class RedisDatabaseManager:
                             logger.error(f"Pipeline error, retrying to use token: {token_str}")
                             continue
                         else:
-                            raise ServerError('Token usage failed.')
+                            raise TokenError('Token usage failed.')
 
                     logger.debug(f"Token used: {token_str}, with current access_count: {res[1]['access_count']}")
                     return ApiToken.from_dict({'token': token_str, 'data': res[1]})

@@ -1,11 +1,11 @@
 import sys
 import asyncio
 import config
-from redis_db import db
+from db.db_manager import db
 from loguru import logger
 from socketify import App, Response, Request, AppListenOptions
 from middleware import AuthMiddlewareRouter
-from endpoints import setup_auth_endpoints
+from endpoints import setup_endpoints_with_mw
 from environments import setup_environment_with_args, InvalidArgumentError, EnvironmentSetupError
 
 
@@ -36,7 +36,7 @@ async def init() -> App:
 
     # setup the middleware auth and endpoints
     auth_router = AuthMiddlewareRouter(app)
-    setup_auth_endpoints(auth_router)  # create the endpoints
+    setup_endpoints_with_mw(auth_router)  # create the endpoints
 
     # setup the environment
     try:

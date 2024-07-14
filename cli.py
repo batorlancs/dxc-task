@@ -1,8 +1,8 @@
 import sys
-import redis_db
+import db.db_manager as db_manager
 import asyncio
 from api_token import ApiToken, ApiTokenData
-from redis_db import db
+from db.db_manager import db
 
 
 async def run_command(args: list[str]):
@@ -20,8 +20,8 @@ async def run_command(args: list[str]):
 
         db.create_token(
             ApiToken(args[1], ApiTokenData(
-                access_limit=5,
-                access_count=2,
+                access_limit=100,
+                access_count=0,
                 scopes=["*"]
             ))
         )

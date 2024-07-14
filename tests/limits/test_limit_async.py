@@ -2,7 +2,7 @@ import pytest
 import grequests
 import requests
 from tests.config import API1_URL, API2_URL, API3_URL
-from redis_db import db
+from db.db_manager import db
 from api_token import ApiToken, ApiTokenData
 
 

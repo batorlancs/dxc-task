@@ -18,7 +18,7 @@ def api3(res: Response, req: Request, token: ApiToken | None):
     res.write_status(200).cork_end(response)
 
 
-def setup_auth_endpoints(router: MiddlewareRouter):
+def setup_endpoints_with_mw(router: MiddlewareRouter):
     router.get("/api1", api1)
     router.get("/api2", api2)
     router.get("/api3", api3)
