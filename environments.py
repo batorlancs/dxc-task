@@ -4,14 +4,13 @@ from redis_db import db
 from api_token import ApiToken, ApiTokenData
 
 
-# exception to handle invalid arguments
 class InvalidArgumentError(Exception):
+    """Exception to handle invalid arguments"""
     pass
-
-# exception to handle all errors happening when setting up the environment
 
 
 class EnvironmentSetupError(Exception):
+    """Exception to handle all errors happening when setting up the environment"""
     pass
 
 

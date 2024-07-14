@@ -1,6 +1,5 @@
 import sys
 from loguru import logger
-from redis_db import db
 
 
 def configure_logger():
