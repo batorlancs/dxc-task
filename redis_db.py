@@ -83,7 +83,7 @@ class RedisDatabaseManager:
 
                 logger.debug(f"Token created: {token_str}")
                 return ApiToken.from_dict({'token': token_str, 'data': res[1]})
-            
+
     def delete_token(self, token: str):
         """
         Delete a token from Redis.
@@ -95,7 +95,7 @@ class RedisDatabaseManager:
         result = self.r.delete(TokenHandler.format(token))
         if result == 0:
             logger.debug(f"Token delete, does not exist: {token}")
-        
+
         logger.debug(f"Token delete, success: {token}")
 
     def token_exists(self, token: str) -> bool:
@@ -160,7 +160,8 @@ class RedisDatabaseManager:
 
                     # Check if the transaction was successful
                     pipe_success_when_inc = len(res) == 3 and res[0] >= 1 and res[1] is not None and res[2]
-                    pipe_success_when_del = len(res) == 4 and res[0] >= 1 and res[1] is not None and res[2] == 1 and res[3]
+                    pipe_success_when_del = len(
+                        res) == 4 and res[0] >= 1 and res[1] is not None and res[2] == 1 and res[3]
                     pipe_success = pipe_success_when_del if reached_access_limit else pipe_success_when_inc
 
                     # This is in case the same client is trying to use the token multiple times asynchronously
@@ -182,7 +183,6 @@ class RedisDatabaseManager:
                     pipe.unwatch()
                     logger.error(f"Token watch error: {token_str}")
                     continue
-            
 
 
 db = RedisDatabaseManager()

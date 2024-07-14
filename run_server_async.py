@@ -18,7 +18,7 @@ def get_var_from_args() -> tuple[int, str]:
     except ValueError:
         print("API_CALLS must be an integer")
         sys.exit(1)
-    
+
     return api_calls, token
 
 
@@ -40,7 +40,7 @@ def run_server_async():
         else:
             print("\033[91mNo Response\033[0m")
     print("\033[92mFinished\033[0m")
-    
+
 
 if __name__ == "__main__":
     run_server_async()

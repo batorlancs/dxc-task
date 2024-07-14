@@ -9,28 +9,28 @@ class TestUtils:
         ("/api", "*", True),
         ("/api/resource", "*", True),
         ("/api/resource/detail", "*", True),
-        
+
         # "" access to just home
         ("/", "", True),
         ("/api", "", False),
         ("/api/resource", "", False),
-        
+
         # "api/" access to all endpoints in the api but not api itself (or "/api/")
-        ("/api", "api/", False),       
+        ("/api", "api/", False),
         ("/api/resource", "api/", True),
         ("/before/api/resource", "api/", False),
-        
+
         # "api*" access to all endpoints in the api including api itself (or "/api*")
         ("/api", "api*", True),
         ("/api/resource", "api*", True),
         ("/before/api/resource", "api*", False),
-        
+
         # "api" access to the specific endpoint (or "/api")
         ("/api", "api", True),
         ("/api/resource", "api", False),
         ("/anotherapi", "api", False),
         ("/anotherapi/resource", "api", False),
-        
+
         # Home access
         ("/", "api*", False),
         ("/", "api/", False),
