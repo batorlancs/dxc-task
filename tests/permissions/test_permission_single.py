@@ -7,12 +7,12 @@ from api_token import ApiToken, ApiTokenData
 
 async def create_token_with_single_permission(permission: str) -> ApiToken:
     token = ApiToken(data=ApiTokenData(0, 3, [permission]))
-    db.create_token(token)
+    await db.create_token(token)
     return token
 
 
 async def delete_token(token: ApiToken):
-    db.delete_token(token.token)
+    await db.delete_token(token.token)
 
 
 @pytest.mark.asyncio(scope="class")

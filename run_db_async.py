@@ -1,6 +1,6 @@
 import asyncio
 import random
-from redis_db import db
+from db.db_manager import db
 from api_token import ApiToken, ApiTokenData
 
 
@@ -12,10 +12,11 @@ async def run_db_async():
             # wait random small amount of time
             await asyncio.sleep((random.random() * 0.1) + 1)
             print("Trying to get token, client:", i)
-            return db.get_and_use_token(token)
+            token = await db.get_and_use_token(token)
+            return token
 
     print("Creating token..")
-    token = db.create_token(
+    token = await db.create_token(
         ApiToken(
             data=ApiTokenData(
                 access_limit=500,
