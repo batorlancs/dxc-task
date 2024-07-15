@@ -34,14 +34,14 @@ class RedisDatabaseManager:
         """Check if the operation has timed out"""
         return self.get_timestamp_seconds() - start_timestamp_seconds > max_time_seconds
 
-    def clear_all_tokens(self):
+    async def clear_all_tokens(self):
         """
         Clear all tokens in Redis.
         """
         self.r.flushall()
         logger.debug("All tokens cleared (database flushed).")
 
-    def create_token(self, api_token: Optional[ApiToken] = ApiToken()) -> ApiToken:
+    async def create_token(self, api_token: Optional[ApiToken] = ApiToken()) -> ApiToken:
         """
         Create a token in Redis with the given access count and limit.
 
@@ -91,7 +91,7 @@ class RedisDatabaseManager:
                 logger.debug(f"Token created: {token_str}")
                 return ApiToken.from_dict({'token': token_str, 'data': res[1]})
 
-    def delete_token(self, token: str):
+    async def delete_token(self, token: str):
         """
         Delete a token from Redis.
 
@@ -105,7 +105,7 @@ class RedisDatabaseManager:
 
         logger.debug(f"Token delete, success: {token}")
 
-    def token_exists(self, token: str) -> bool:
+    async def token_exists(self, token: str) -> bool:
         """
         Check if a token exists in Redis.
 
@@ -121,7 +121,7 @@ class RedisDatabaseManager:
 
         return True
 
-    def get_and_use_token(self, token: str, url: str = None) -> ApiToken:
+    async def get_and_use_token(self, token: str, url: str = None) -> ApiToken:
         """
         Use a token in Redis.
 

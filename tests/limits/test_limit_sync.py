@@ -7,7 +7,7 @@ from api_token import ApiToken, ApiTokenData
 
 async def create_token(permissions: list[str], count: int = 0, limit: int = 10) -> ApiToken:
     token = ApiToken(data=ApiTokenData(count, limit, permissions))
-    db.create_token(token)
+    await db.create_token(token)
     return token
 
 
